@@ -4,7 +4,7 @@ import net.minecraft.world.item.ItemStack;
 
 public interface LastItemDataHolder
 {
-    public ItemStack getLastItemStack();
+    ItemStack getLastItemStack();
 
-    public void setLastItemStack(ItemStack lastItemStack);
+    void setLastItemStack(ItemStack lastItemStack);
 }

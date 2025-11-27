@@ -257,8 +257,6 @@ public class CugoBrain implements CugoBehavior {
         ItemStack held = golem.getItemBySlot(InteractionHand.MAIN_HAND.asEquipmentSlot());
         if(held.isEmpty()) return;
 
-        int maxStackSize = ConfigHandler.getConfig().maxHeldItemStackSize;
-
         for(int i = 0; i < container.getContainerSize(); i++) {
             ItemStack stackInChest = container.getItem(i);
 
