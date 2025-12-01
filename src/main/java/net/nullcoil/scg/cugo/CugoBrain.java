@@ -1,6 +1,7 @@
 package net.nullcoil.scg.cugo;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.tags.BlockTags;
@@ -12,10 +13,13 @@ import net.minecraft.world.entity.animal.coppergolem.CopperGolemState;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.ChestBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import net.nullcoil.scg.config.Config;
 import net.nullcoil.scg.config.ConfigHandler;
+import net.nullcoil.scg.util.ModTags;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -95,16 +99,29 @@ public class CugoBrain implements CugoBehavior {
         BlockPos foundChest = null;
         double closestDistance = Double.MAX_VALUE;
 
+        boolean hasItem = golem.hasItemInSlot(InteractionHand.MAIN_HAND.asEquipmentSlot());
+
+        // Debug: Always print when searching
+        System.out.println("[CugoBrain] SEARCHING - Has item: " + hasItem);
+        System.out.println("[CugoBrain] Search range: H=" + horizontalRange + " V=" + verticalRange);
+
+        int checkedBlocks = 0;
+        int inputContainers = 0;
+        int outputContainers = 0;
+
         // Search in a box around the golem
         for (int x = -horizontalRange; x <= horizontalRange; x++) {
             for (int y = -verticalRange; y <= verticalRange; y++) {
                 for (int z = -horizontalRange; z <= horizontalRange; z++) {
                     BlockPos checkPos = golemPos.offset(x, y, z);
+                    BlockState state = level.getBlockState(checkPos);
+                    checkedBlocks++;
 
-                    // Check if golem has item
-                    if(!golem.hasItemInSlot(InteractionHand.MAIN_HAND.asEquipmentSlot())) {
-                        // Check if this is a copper chest
-                        if (level.getBlockState(checkPos).is(BlockTags.COPPER_CHESTS)) {
+                    if (!hasItem) {
+                        // Check if this is an input container
+                        if (state.is(ModTags.Blocks.CUGO_CONTAINER_INPUTS)) {
+                            inputContainers++;
+                            System.out.println("[CugoBrain] Found INPUT container at " + checkPos + ": " + state.getBlock());
                             double distance = golemPos.distSqr(checkPos);
                             if (distance < closestDistance) {
                                 closestDistance = distance;
@@ -112,7 +129,10 @@ public class CugoBrain implements CugoBehavior {
                             }
                         }
                     } else {
-                        if (level.getBlockState(checkPos).is(Blocks.CHEST)) {
+                        // Check if this is an output container
+                        if (state.is(ModTags.Blocks.CUGO_CONTAINER_OUTPUTS)) {
+                            outputContainers++;
+                            System.out.println("[CugoBrain] Found OUTPUT container at " + checkPos + ": " + state.getBlock());
                             double distance = golemPos.distSqr(checkPos);
                             if (distance < closestDistance) {
                                 closestDistance = distance;
@@ -123,6 +143,10 @@ public class CugoBrain implements CugoBehavior {
                 }
             }
         }
+
+        System.out.println("[CugoBrain] Search complete - Checked: " + checkedBlocks +
+                ", Inputs found: " + inputContainers +
+                ", Outputs found: " + outputContainers);
 
         if (foundChest != null) {
             System.out.println("[CugoBrain] Found chest at: " + foundChest);
@@ -141,15 +165,17 @@ public class CugoBrain implements CugoBehavior {
             return;
         }
 
-        // Check if chest still exists
-        if (!golem.hasItemInSlot(InteractionHand.MAIN_HAND.asEquipmentSlot()) && !level.getBlockState(targetChestPos).is(BlockTags.COPPER_CHESTS)) {
-            System.out.println("[CugoBrain] Target copper chest disappeared!");
+        boolean hasItem = golem.hasItemInSlot(InteractionHand.MAIN_HAND.asEquipmentSlot());
+        BlockState state = level.getBlockState(targetChestPos);
+
+        if (!hasItem && !state.is(ModTags.Blocks.CUGO_CONTAINER_INPUTS)) {
+            System.out.println("[CugoBrain] Target input container disappeared!");
             targetChestPos = null;
             startWandering(golem);
             return;
         }
-        if (golem.hasItemInSlot(InteractionHand.MAIN_HAND.asEquipmentSlot()) && !level.getBlockState(targetChestPos).is(Blocks.CHEST)) {
-            System.out.println("[CugoBrain] Target chest disappeared!");
+        if (hasItem && !state.is(ModTags.Blocks.CUGO_CONTAINER_OUTPUTS)) {
+            System.out.println("[CugoBrain] Target output container disappeared!");
             targetChestPos = null;
             startWandering(golem);
             return;
@@ -178,14 +204,27 @@ public class CugoBrain implements CugoBehavior {
             return;
         }
 
-        BlockEntity blockEntity = level.getBlockEntity(targetChestPos);
-        if (!(blockEntity instanceof Container container)) {
-            System.out.println("[CugoBrain] Chest is not a container!");
-            targetChestPos = null;
+        BlockState state = level.getBlockState(targetChestPos);
+        Container container = null;
+
+        if(state.getBlock() instanceof ChestBlock chestBlock) {
+            container = ChestBlock.getContainer(
+                    chestBlock,
+                    state,
+                    level,
+                    targetChestPos,
+                    true
+            );
+
+            if(container == null) {
+                startWandering(golem);
+                return;
+            }
+        }
+        if(container == null) {
             startWandering(golem);
             return;
         }
-
         interactionTicks++;
 
         boolean holdingItem = !golem.getMainHandItem().isEmpty();

@@ -31,5 +31,7 @@ public class Config
 
     public boolean redstoneBoost = true;
 
+    public boolean debugMode = true;
+
     public Config() {}
 }
