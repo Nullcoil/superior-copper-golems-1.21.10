@@ -5,33 +5,16 @@ public class Config
 {
     private final String _comment = "Download mod menu for better config experience and option explanations with translation";
 
-    public boolean shulkerAndBundleSorting = true;
+    public int maxStackSize = 64;
 
-    public boolean ignoreColor = false;
-
-    public boolean allowIndividualItemsMatchContainerContents = false;
-
-    public boolean allowInsertingItemsIntoContainers = false;
-
-    public boolean matchOxidationLevel = false;
-
-    public int maxChestCheckCount = 10;
-
-    public int maxHeldItemStackSize = 32;
-
-    public int cooldownTime = 140;
-
-    public int verticalRange = 4;
-
-    public int horizontalRange = 32;
-
-    public int interactionTime = 3; // in seconds
-
-    public int wanderDuration = 3; // in seconds
+    public int yInteractRange = 5;   // for interacting with containers
+    public int xzInteractRange = 1;  // for interacting with containers
+    public int horizontalRange = 16; // for pathfinding and finding chests
+    public int verticalRange = 5;    // for pathfinding and finding chests
+    public int wanderDuration = 3;   // length of random wander
 
     public boolean redstoneBoost = true;
 
-    public boolean debugMode = true;
 
     public Config() {}
 }
