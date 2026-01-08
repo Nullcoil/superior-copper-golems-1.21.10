@@ -5,6 +5,7 @@ import net.minecraft.world.entity.animal.coppergolem.CopperGolem;
 import net.minecraft.world.item.ItemStack;
 import net.nullcoil.scg.config.ConfigHandler;
 import net.nullcoil.scg.cugo.behaviors.RandomWanderBehavior;
+import net.nullcoil.scg.cugo.behaviors.ReturnHomeBehavior;
 
 public class NavigationController {
 
@@ -13,6 +14,7 @@ public class NavigationController {
 
     // Instantiate behaviors
     private final RandomWanderBehavior wanderBehavior = new RandomWanderBehavior();
+    private final ReturnHomeBehavior homeBehavior = new ReturnHomeBehavior();
 
     public NavigationController(CopperGolem golem) {
         this.golem = golem;
@@ -34,11 +36,15 @@ public class NavigationController {
 
     private void decideNextMove() {
         ItemStack heldItem = golem.getMainHandItem();
-        boolean success;
+        boolean success = false;
 
         if (heldItem.isEmpty()) {
             System.out.println("NavManager: Hand empty. Delegating to RandomWanderBehavior.");
-            success = wanderBehavior.run(golem);
+            success = homeBehavior.run(golem);
+            if(!success) {
+                System.out.println("NavManager: Already home (or no home). Wandering...");
+                success = wanderBehavior.run(golem);
+            }
         } else {
             System.out.println("NavManager: Holding " + heldItem + ". Delegating to RandomWanderBehavior (Placeholder).");
             success = wanderBehavior.run(golem);

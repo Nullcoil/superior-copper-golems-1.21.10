@@ -4,6 +4,7 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "Cugo_BrainIntegrationMixin",
+    "Cugo_EntityDataMixin",
     "Cugo_InteractionMixin",
     "Cugo_NoAIStepMixin",
     "Cugo_NoBrainMixin",

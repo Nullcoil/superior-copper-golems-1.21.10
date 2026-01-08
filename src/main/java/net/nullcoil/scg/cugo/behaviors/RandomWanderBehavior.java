@@ -37,6 +37,8 @@ public class RandomWanderBehavior implements Behavior {
         int range = ConfigHandler.getConfig().horizontalRange;
         int vertical = ConfigHandler.getConfig().verticalRange;
 
+        System.out.println("Cugo Wander: Searching with Range= " + range + ", Vertical=" + vertical);
+
         Vec3 target = LandRandomPos.getPos(golem, range / 2, vertical);
 
         if (target != null) {

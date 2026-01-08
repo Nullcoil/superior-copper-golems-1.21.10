@@ -15,6 +15,5 @@ public class Config
 
     public boolean redstoneBoost = true;
 
-
     public Config() {}
 }
