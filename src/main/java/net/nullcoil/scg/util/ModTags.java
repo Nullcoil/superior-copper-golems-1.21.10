@@ -10,6 +10,7 @@ public class ModTags {
     public static class Blocks {
         public static final TagKey<Block> CUGO_CONTAINER_INPUTS = createTag("cugo_container_inputs");
         public static final TagKey<Block> CUGO_CONTAINER_OUTPUTS = createTag("cugo_container_outputs");
+        public static final TagKey<Block> CUGO_INTERACTABLES = createTag("cugo_interactables");
 
         private static TagKey<Block> createTag(String name) {
             return TagKey.create(Registries.BLOCK, ResourceLocation.fromNamespaceAndPath(SuperiorCopperGolems.MOD_ID, name));
