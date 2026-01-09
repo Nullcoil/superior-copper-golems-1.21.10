@@ -62,6 +62,20 @@ public class MemoryManager {
         }
     }
 
+    // In MemoryManager.java
+
+    public boolean hasMemory(BlockPos pos) {
+        return chestMemory.containsKey(pos);
+    }
+
+    public void markAsSeen(BlockPos pos) {
+        if (!hasMemory(pos)) {
+            // Add an empty memory just to say "I know this exists"
+            // Actual contents will be filled when he physically opens it later.
+            chestMemory.put(pos, NonNullList.create());
+        }
+    }
+
     /**
      * Helper to retrieve memory (for future behaviors)
      */

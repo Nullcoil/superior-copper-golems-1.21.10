@@ -12,8 +12,10 @@ public class Config
     public int horizontalRange = 16; // for pathfinding and finding chests
     public int verticalRange = 5;    // for pathfinding and finding chests
     public int wanderDuration = 3;   // length of random wander
+    public int searchDuration = 30;
 
     public boolean redstoneBoost = true;
+    public int pingLineDensity = 2;
 
     public Config() {}
 }
