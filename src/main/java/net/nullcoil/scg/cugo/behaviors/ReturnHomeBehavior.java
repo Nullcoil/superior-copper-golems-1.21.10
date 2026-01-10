@@ -1,8 +1,11 @@
 package net.nullcoil.scg.cugo.behaviors;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.ai.util.DefaultRandomPos;
 import net.minecraft.world.entity.animal.coppergolem.CopperGolem;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
+import net.nullcoil.scg.config.ConfigHandler;
 import net.nullcoil.scg.util.CugoHomeAccessor;
 import net.nullcoil.scg.util.ModTags;
 
@@ -10,38 +13,51 @@ public class ReturnHomeBehavior implements Behavior {
 
     @Override
     public boolean run(CopperGolem golem) {
-        // 1. Check if we are holding items. If we are, we probably shouldn't go home yet (we might need to sort them).
-        if (!golem.getMainHandItem().isEmpty()) {
-            return false;
-        }
+        if (!golem.getMainHandItem().isEmpty()) return false;
 
-        // 2. Get Home Position securely
         CugoHomeAccessor accessor = (CugoHomeAccessor) golem;
         BlockPos homePos = accessor.scg$getHomePos();
+        if (homePos == null) return false;
 
-        // If we have no home, we can't go there.
-        if (homePos == null) {
-            return false;
-        }
-
-        // 3. Validate Home Exists
-        // If the block at homePos is NOT a valid copper chest, we must forget it.
+        // Validate existence
         BlockState state = golem.level().getBlockState(homePos);
         if (!state.is(ModTags.Blocks.CUGO_CONTAINER_INPUTS)) {
-            System.out.println("Cugo Home: Chest at " + homePos + " is missing/broken. Forgetting home.");
             accessor.scg$setHomePos(null);
             return false;
         }
 
-        // 4. Are we already there? (Within roughly 2 blocks)
-        if (golem.blockPosition().distSqr(homePos) <= 4.0D) {
-            return false; // We are home, no need to pathfind.
+        // --- NEW LOGIC START ---
+
+        // 1. Are we within Interact Range? If so, STOP. We are done "Returning".
+        // The Controller will see we are done and pick the "Interact" behavior next.
+        if (isInInteractRange(golem, homePos)) {
+            golem.getNavigation().stop();
+            return false; // Return false so the Controller keeps looking for the next task (Interaction)
         }
 
-        // 5. Go Home
-        System.out.println("Cugo Decision: Returning to home at " + homePos);
-        golem.getNavigation().moveTo(homePos.getX(), homePos.getY(), homePos.getZ(), 1.0D);
+        // 2. Are we standing ON TOP of the chest?
+        BlockPos below = golem.blockPosition().below();
+        if (below.equals(homePos)) {
+            // Step off!
+            Vec3 randomStep = DefaultRandomPos.getPosAway(golem, 2, 1, Vec3.atBottomCenterOf(homePos));
+            if (randomStep != null) {
+                golem.getNavigation().moveTo(randomStep.x, randomStep.y, randomStep.z, 1.0D);
+                return true;
+            }
+        }
 
+        // --- NEW LOGIC END ---
+
+        // Standard Pathing
+        golem.getNavigation().moveTo(homePos.getX(), homePos.getY(), homePos.getZ(), 1.0D);
         return true;
+    }
+
+    private boolean isInInteractRange(CopperGolem golem, BlockPos target) {
+        double hRange = ConfigHandler.getConfig().xzInteractRange;
+        double vRange = ConfigHandler.getConfig().yInteractRange;
+        double distSqr = golem.blockPosition().distSqr(target);
+        double yDiff = Math.abs(golem.getY() - target.getY());
+        return yDiff <= vRange && distSqr <= (hRange + 1.5) * (hRange + 1.5);
     }
 }
