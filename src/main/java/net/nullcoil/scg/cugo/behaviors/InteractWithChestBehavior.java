@@ -9,7 +9,6 @@ import net.minecraft.world.entity.animal.coppergolem.CopperGolem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.ChestBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
@@ -23,13 +22,7 @@ import net.nullcoil.scg.cugo.managers.StateMachine;
 import net.nullcoil.scg.util.CugoAnimationAccessor;
 import net.nullcoil.scg.util.CugoHomeAccessor;
 
-public class InteractWithChestBehavior implements Behavior {
-
-    private final NavigationController controller;
-
-    public InteractWithChestBehavior(NavigationController controller) {
-        this.controller = controller;
-    }
+public record InteractWithChestBehavior(NavigationController controller) implements Behavior {
 
     public boolean canInteract(CopperGolem golem) {
         if (!golem.getMainHandItem().isEmpty()) return false;
@@ -73,10 +66,10 @@ public class InteractWithChestBehavior implements Behavior {
 
         CugoAnimationAccessor anim = (CugoAnimationAccessor) golem;
         toggleChestLid(golem.level(), homePos, true);
-        if(golem.level().getBlockState(homePos).is(BlockTags.COPPER_CHESTS)) {
-            golem.level().playSound(null,homePos,SoundEvents.COPPER_CHEST_OPEN, SoundSource.BLOCKS);
+        if (golem.level().getBlockState(homePos).is(BlockTags.COPPER_CHESTS)) {
+            golem.level().playSound(null, homePos, SoundEvents.COPPER_CHEST_OPEN, SoundSource.BLOCKS);
         } else {
-            golem.level().playSound(null,homePos,SoundEvents.CHEST_OPEN,SoundSource.BLOCKS, 0.5f, 1.0f);
+            golem.level().playSound(null, homePos, SoundEvents.CHEST_OPEN, SoundSource.BLOCKS, 0.5f, 1.0f);
         }
 
         if (success) {

@@ -18,13 +18,7 @@ import net.nullcoil.scg.cugo.managers.StateMachine;
 import net.nullcoil.scg.util.CugoAnimationAccessor;
 import net.nullcoil.scg.util.CugoBrainAccessor;
 
-public class InteractToDepositBehavior implements Behavior {
-
-    private final NavigationController controller;
-
-    public InteractToDepositBehavior(NavigationController controller) {
-        this.controller = controller;
-    }
+public record InteractToDepositBehavior(NavigationController controller) implements Behavior {
 
     public boolean canInteract(CopperGolem golem) {
         if (golem.getMainHandItem().isEmpty()) return false;
@@ -130,14 +124,16 @@ public class InteractToDepositBehavior implements Behavior {
         Container container = getContainer(level, pos);
         if (container == null) return;
         NonNullList<ItemStack> contents = NonNullList.withSize(container.getContainerSize(), ItemStack.EMPTY);
-        for(int i=0; i<container.getContainerSize(); i++) contents.set(i, container.getItem(i).copy());
+        for (int i = 0; i < container.getContainerSize(); i++) contents.set(i, container.getItem(i).copy());
         CugoBrainAccessor brain = (CugoBrainAccessor) golem;
-        ((CugoBrain)brain.scg$getBrain()).getMemoryManager().updateMemory(pos, contents);
+        ((CugoBrain) brain.scg$getBrain()).getMemoryManager().updateMemory(pos, contents);
     }
+
     private void toggleChestLid(Level level, BlockPos pos, boolean open) {
         BlockState state = level.getBlockState(pos);
         level.blockEvent(pos, state.getBlock(), 1, open ? 1 : 0);
     }
+
     private Container getContainer(Level level, BlockPos pos) {
         BlockState state = level.getBlockState(pos);
         BlockEntity be = level.getBlockEntity(pos);

@@ -11,13 +11,7 @@ import net.nullcoil.scg.util.CugoBrainAccessor;
 import java.util.HashSet;
 import java.util.Set;
 
-public class DepositItemBehavior implements Behavior {
-
-    private final NavigationController controller;
-
-    public DepositItemBehavior(NavigationController controller) {
-        this.controller = controller;
-    }
+public record DepositItemBehavior(NavigationController controller) implements Behavior {
 
     @Override
     public boolean run(CopperGolem golem) {
@@ -32,7 +26,7 @@ public class DepositItemBehavior implements Behavior {
         Set<BlockPos> failedPaths = new HashSet<>();
 
         // Try up to 5 times to find a reachable chest
-        for(int attempts = 0; attempts < 5; attempts++) {
+        for (int attempts = 0; attempts < 5; attempts++) {
 
             BlockPos target = null;
 
