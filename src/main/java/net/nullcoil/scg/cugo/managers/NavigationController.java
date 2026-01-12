@@ -13,10 +13,10 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.nullcoil.scg.config.ConfigHandler;
-import net.nullcoil.scg.cugo.behaviors.InteractWithChestBehavior;
-import net.nullcoil.scg.cugo.behaviors.RandomWanderBehavior;
-import net.nullcoil.scg.cugo.behaviors.ReturnHomeBehavior;
+import net.nullcoil.scg.cugo.CugoBrain;
+import net.nullcoil.scg.cugo.behaviors.*;
 import net.nullcoil.scg.util.CugoAnimationAccessor;
+import net.nullcoil.scg.util.CugoBrainAccessor;
 import net.nullcoil.scg.util.CugoHomeAccessor;
 
 public class NavigationController {
@@ -25,17 +25,21 @@ public class NavigationController {
     private int cooldownTimer = 0;
 
     // --- STATE ---
-    private StateMachine.Intent currentIntent = StateMachine.Intent.WANDERING; // Default
+    private StateMachine.Intent currentIntent = StateMachine.Intent.WANDERING;
     private boolean isInteracting = false;
-
-    // --- TASK STATE ---
     private boolean forceWander = false;
+
+    // Data
+    private BlockPos depositTarget = null;
     private BlockPos pendingChestPos = null;
     private int pendingSlotIndex = -1;
 
+    // Behaviors
     private final RandomWanderBehavior wanderBehavior = new RandomWanderBehavior();
     private final ReturnHomeBehavior homeBehavior = new ReturnHomeBehavior();
-    private final InteractWithChestBehavior interactBehavior = new InteractWithChestBehavior(this);
+    private final InteractWithChestBehavior takeBehavior = new InteractWithChestBehavior(this);
+    private final DepositItemBehavior depositMoveBehavior = new DepositItemBehavior(this);
+    private final InteractToDepositBehavior depositActBehavior = new InteractToDepositBehavior(this);
 
     public NavigationController(CopperGolem golem) {
         this.golem = golem;
@@ -46,15 +50,24 @@ public class NavigationController {
             cooldownTimer--;
 
             if (cooldownTimer == 0) {
-                // Animation Finished Logic
                 if (isInteracting) {
-                    finalizeItemPickup();
+                    if (currentIntent == StateMachine.Intent.DEPOSITING) {
+                        finalizeDeposit();
+                        closeChest(depositTarget);
+                        this.depositTarget = null;
+                    } else {
+                        finalizeItemPickup();
+                        closeHomeChest();
+                    }
+
                     ((CugoAnimationAccessor) golem).scg$setInteractState(null);
-                    closeHomeChest();
                     isInteracting = false;
 
-                    // Reset Intent: We finished the job, now we wander.
-                    this.currentIntent = StateMachine.Intent.WANDERING;
+                    if(golem.getMainHandItem().isEmpty()) {
+                        this.currentIntent = StateMachine.Intent.RETURNING_HOME;
+                    } else {
+                        this.currentIntent = StateMachine.Intent.WANDERING;
+                    }
                 }
             }
             return;
@@ -68,16 +81,16 @@ public class NavigationController {
         decideNextMove();
     }
 
+    // ... (decideNextMove, Setters, Getters unchanged) ...
     private void decideNextMove() {
         ItemStack heldItem = golem.getMainHandItem();
         boolean success = false;
         boolean startingInteraction = false;
 
-        // 1. FORCE WANDER
         if (forceWander) {
             if (wanderBehavior.run(golem)) {
                 success = true;
-                this.currentIntent = StateMachine.Intent.WANDERING; // Explicit
+                this.currentIntent = StateMachine.Intent.WANDERING;
                 forceWander = false;
             } else {
                 this.cooldownTimer = 10;
@@ -85,40 +98,27 @@ public class NavigationController {
             }
         }
 
-        // 2. STANDARD LOGIC
         if (!success) {
             if (heldItem.isEmpty()) {
-
-                // Priority 1: Interact
-                // Condition: Must be in range AND Intent must be RETURNING_HOME
-                if (this.currentIntent == StateMachine.Intent.RETURNING_HOME && interactBehavior.canInteract(golem)) {
-                    if (interactBehavior.run(golem)) {
-                        success = true;
-                        startingInteraction = true;
-                    }
+                if (this.currentIntent == StateMachine.Intent.RETURNING_HOME && takeBehavior.canInteract(golem)) {
+                    if (takeBehavior.run(golem)) { success = true; startingInteraction = true; }
                 }
-
-                // Priority 2: Go Home
-                if (!success) {
-                    if(homeBehavior.run(golem)) {
-                        success = true;
-                        this.currentIntent = StateMachine.Intent.RETURNING_HOME; // Set Intent
-                    }
-                }
-
-                // Priority 3: Wander
-                if (!success) {
-                    if (wanderBehavior.run(golem)) {
-                        success = true;
-                        this.currentIntent = StateMachine.Intent.WANDERING; // Set Intent
-                    }
+                if (!success && homeBehavior.run(golem)) {
+                    success = true;
+                    this.currentIntent = StateMachine.Intent.RETURNING_HOME;
                 }
             } else {
-                // Holding Item -> Wander
-                if (wanderBehavior.run(golem)) {
-                    success = true;
-                    this.currentIntent = StateMachine.Intent.WANDERING;
+                if (this.currentIntent == StateMachine.Intent.DEPOSITING && depositActBehavior.canInteract(golem)) {
+                    if (depositActBehavior.run(golem)) { success = true; startingInteraction = true; }
                 }
+                if (!success && depositMoveBehavior.run(golem)) {
+                    success = true;
+                    this.currentIntent = StateMachine.Intent.DEPOSITING;
+                }
+            }
+            if (!success && wanderBehavior.run(golem)) {
+                success = true;
+                this.currentIntent = StateMachine.Intent.WANDERING;
             }
         }
 
@@ -139,14 +139,12 @@ public class NavigationController {
         }
     }
 
-    public void markInteractionFailed() {
-        this.forceWander = true;
-    }
-
-    public void schedulePickup(BlockPos pos, int slotIndex) {
-        this.pendingChestPos = pos;
-        this.pendingSlotIndex = slotIndex;
-    }
+    public void setDepositTarget(BlockPos pos) { this.depositTarget = pos; }
+    public BlockPos getDepositTarget() { return this.depositTarget; }
+    public void markDepositFailed() { this.forceWander = true; }
+    public void markInteractionFailed() { this.forceWander = true; }
+    public void schedulePickup(BlockPos pos, int slotIndex) { this.pendingChestPos = pos; this.pendingSlotIndex = slotIndex; }
+    public void scheduleDeposit(BlockPos pos, int slotIndex) { this.pendingChestPos = pos; this.pendingSlotIndex = slotIndex; }
 
     private void finalizeItemPickup() {
         if (pendingChestPos != null && pendingSlotIndex != -1) {
@@ -157,7 +155,7 @@ public class NavigationController {
                 if (!stack.isEmpty()) {
                     ItemStack taken = container.removeItem(pendingSlotIndex, stack.getCount());
                     golem.setItemInHand(InteractionHand.MAIN_HAND, taken);
-                    golem.playSound(SoundEvents.ITEM_PICKUP, 1.0f, 1.0f);
+                    // SOUND REMOVED: Now plays in InteractWithChestBehavior
                 }
             }
             pendingChestPos = null;
@@ -165,16 +163,52 @@ public class NavigationController {
         }
     }
 
-    private void closeHomeChest() {
-        BlockPos homePos = ((CugoHomeAccessor) golem).scg$getHomePos();
-        if (homePos != null) {
+    private void finalizeDeposit() {
+        if (pendingChestPos != null && pendingSlotIndex != -1) {
             Level level = golem.level();
-            BlockState state = level.getBlockState(homePos);
-            level.blockEvent(homePos, state.getBlock(), 1, 0);
-            golem.playSound(SoundEvents.CHEST_CLOSE, 0.5f, 1.0f);
+            Container container = getContainer(level, pendingChestPos);
+            ItemStack toDeposit = golem.getMainHandItem();
+
+            if (container != null && !toDeposit.isEmpty()) {
+                ItemStack slotStack = container.getItem(pendingSlotIndex);
+
+                if (slotStack.isEmpty()) {
+                    container.setItem(pendingSlotIndex, toDeposit.copy());
+                    golem.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+                } else if (ItemStack.isSameItemSameComponents(slotStack, toDeposit)) {
+                    int space = slotStack.getMaxStackSize() - slotStack.getCount();
+                    int moveAmount = Math.min(space, toDeposit.getCount());
+                    slotStack.grow(moveAmount);
+                    toDeposit.shrink(moveAmount);
+                    golem.setItemInHand(InteractionHand.MAIN_HAND, toDeposit.isEmpty() ? ItemStack.EMPTY : toDeposit);
+                }
+                // SOUND REMOVED: Now plays in InteractToDepositBehavior
+                updateChestMemory(golem, pendingChestPos);
+            }
+            pendingChestPos = null;
+            pendingSlotIndex = -1;
         }
     }
 
+    // ... (Helpers same as before) ...
+    private void updateChestMemory(CopperGolem golem, BlockPos pos) {
+        Level level = golem.level();
+        Container container = getContainer(level, pos);
+        if (container == null) return;
+        net.minecraft.core.NonNullList<ItemStack> contents = net.minecraft.core.NonNullList.withSize(container.getContainerSize(), ItemStack.EMPTY);
+        for(int i=0; i<container.getContainerSize(); i++) contents.set(i, container.getItem(i).copy());
+        CugoBrainAccessor brain = (CugoBrainAccessor) golem;
+        ((CugoBrain)brain.scg$getBrain()).getMemoryManager().updateMemory(pos, contents);
+    }
+    private void closeHomeChest() { closeChest(((CugoHomeAccessor) golem).scg$getHomePos()); }
+    private void closeChest(BlockPos pos) {
+        if (pos != null) {
+            Level level = golem.level();
+            BlockState state = level.getBlockState(pos);
+            level.blockEvent(pos, state.getBlock(), 1, 0);
+            golem.playSound(SoundEvents.CHEST_CLOSE, 0.5f, 1.0f);
+        }
+    }
     private Container getContainer(Level level, BlockPos pos) {
         BlockState state = level.getBlockState(pos);
         BlockEntity be = level.getBlockEntity(pos);

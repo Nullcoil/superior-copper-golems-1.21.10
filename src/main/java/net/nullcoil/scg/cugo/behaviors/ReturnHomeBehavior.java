@@ -19,26 +19,21 @@ public class ReturnHomeBehavior implements Behavior {
         BlockPos homePos = accessor.scg$getHomePos();
         if (homePos == null) return false;
 
-        // Validate existence
         BlockState state = golem.level().getBlockState(homePos);
         if (!state.is(ModTags.Blocks.CUGO_CONTAINER_INPUTS)) {
             accessor.scg$setHomePos(null);
             return false;
         }
 
-        // --- NEW LOGIC START ---
-
-        // 1. Are we within Interact Range? If so, STOP. We are done "Returning".
-        // The Controller will see we are done and pick the "Interact" behavior next.
+        // 1. Box Stop Check
         if (isInInteractRange(golem, homePos)) {
             golem.getNavigation().stop();
-            return false; // Return false so the Controller keeps looking for the next task (Interaction)
+            return false;
         }
 
-        // 2. Are we standing ON TOP of the chest?
+        // 2. Anti-Stuck
         BlockPos below = golem.blockPosition().below();
         if (below.equals(homePos)) {
-            // Step off!
             Vec3 randomStep = DefaultRandomPos.getPosAway(golem, 2, 1, Vec3.atBottomCenterOf(homePos));
             if (randomStep != null) {
                 golem.getNavigation().moveTo(randomStep.x, randomStep.y, randomStep.z, 1.0D);
@@ -46,18 +41,32 @@ public class ReturnHomeBehavior implements Behavior {
             }
         }
 
-        // --- NEW LOGIC END ---
+        // 3. Move Logic
+        boolean moveSuccess = true;
+        if (golem.getNavigation().isDone() ||
+                golem.getNavigation().getTargetPos() == null ||
+                !golem.getNavigation().getTargetPos().equals(homePos)) {
 
-        // Standard Pathing
-        golem.getNavigation().moveTo(homePos.getX(), homePos.getY(), homePos.getZ(), 1.0D);
-        return true;
+            moveSuccess = golem.getNavigation().moveTo(homePos.getX(), homePos.getY(), homePos.getZ(), 1.0D);
+        }
+
+        return moveSuccess;
     }
 
+    // --- BOX DISTANCE LOGIC ---
     private boolean isInInteractRange(CopperGolem golem, BlockPos target) {
         double hRange = ConfigHandler.getConfig().xzInteractRange;
         double vRange = ConfigHandler.getConfig().yInteractRange;
-        double distSqr = golem.blockPosition().distSqr(target);
-        double yDiff = Math.abs(golem.getY() - target.getY());
-        return yDiff <= vRange && distSqr <= (hRange + 1.5) * (hRange + 1.5);
+
+        double xDiff = Math.abs(golem.getX() - (target.getX() + 0.5));
+        if (xDiff > (hRange + 0.5)) return false;
+
+        double zDiff = Math.abs(golem.getZ() - (target.getZ() + 0.5));
+        if (zDiff > (hRange + 0.5)) return false;
+
+        double yDiff = Math.abs(golem.getY() - (target.getY() + 0.5));
+        if (yDiff > (vRange + 0.5)) return false;
+
+        return true;
     }
 }
