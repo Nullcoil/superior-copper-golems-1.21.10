@@ -1,8 +1,8 @@
 package net.nullcoil.scg.cugo.behaviors;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.NonNullList;
 import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.animal.coppergolem.CopperGolem;
 import net.minecraft.world.item.ItemStack;
@@ -12,12 +12,11 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.nullcoil.scg.config.ConfigHandler;
+import net.nullcoil.scg.cugo.CugoBrain;
 import net.nullcoil.scg.cugo.managers.NavigationController;
 import net.nullcoil.scg.cugo.managers.StateMachine;
 import net.nullcoil.scg.util.CugoAnimationAccessor;
 import net.nullcoil.scg.util.CugoBrainAccessor;
-import net.nullcoil.scg.cugo.CugoBrain;
-import net.minecraft.core.NonNullList;
 
 public class InteractToDepositBehavior implements Behavior {
 
@@ -29,10 +28,8 @@ public class InteractToDepositBehavior implements Behavior {
 
     public boolean canInteract(CopperGolem golem) {
         if (golem.getMainHandItem().isEmpty()) return false;
-
         BlockPos target = controller.getDepositTarget();
         if (target == null) return false;
-
         return isInInteractRange(golem, target);
     }
 
@@ -47,54 +44,47 @@ public class InteractToDepositBehavior implements Behavior {
 
         CugoAnimationAccessor anim = (CugoAnimationAccessor) golem;
         toggleChestLid(golem.level(), target, true);
-        golem.level().playSound(null, target, SoundEvents.COPPER_CHEST_OPEN, SoundSource.BLOCKS, 0.5f, 1.0f);
+        golem.playSound(SoundEvents.CHEST_OPEN, 0.5f, 1.0f);
 
         updateChestMemory(golem, target);
 
+        // Logic check: Can we deposit?
         boolean success = tryDeposit(golem, target);
 
         if (success) {
             anim.scg$setInteractState(StateMachine.Interact.DROP);
-            // TRIGGER SOUND: Starts immediately with animation
             golem.playSound(SoundEvents.COPPER_GOLEM_ITEM_DROP, 1.0f, 1.0f);
         } else {
             anim.scg$setInteractState(StateMachine.Interact.NODROP);
-            // TRIGGER SOUND: Refusal immediately
             golem.playSound(SoundEvents.COPPER_GOLEM_ITEM_NO_DROP, 1.0f, 1.0f);
-
             controller.markDepositFailed();
         }
 
         return true;
     }
 
-    // --- BOX DISTANCE LOGIC ---
+    // ... (isInInteractRange / Helpers same as before) ...
     private boolean isInInteractRange(CopperGolem golem, BlockPos target) {
         double hRange = ConfigHandler.getConfig().xzInteractRange;
         double vRange = ConfigHandler.getConfig().yInteractRange;
-
         double xDiff = Math.abs(golem.getX() - (target.getX() + 0.5));
         if (xDiff > (hRange + 0.5)) return false;
-
         double zDiff = Math.abs(golem.getZ() - (target.getZ() + 0.5));
         if (zDiff > (hRange + 0.5)) return false;
-
         double yDiff = Math.abs(golem.getY() - (target.getY() + 0.5));
         if (yDiff > (vRange + 0.5)) return false;
-
         return true;
     }
 
     private boolean tryDeposit(CopperGolem golem, BlockPos pos) {
-        // ... (Keep existing Purity Check logic from previous step) ...
         Level level = golem.level();
         Container container = getContainer(level, pos);
         if (container == null) return false;
-
         ItemStack toDeposit = golem.getMainHandItem();
+
+        // 1. Purity Check
         boolean chestIsEmpty = true;
         boolean chestContainsMatch = false;
-
         for (int i = 0; i < container.getContainerSize(); i++) {
             ItemStack stack = container.getItem(i);
             if (!stack.isEmpty()) {
@@ -102,26 +92,36 @@ public class InteractToDepositBehavior implements Behavior {
                 if (ItemStack.isSameItemSameComponents(stack, toDeposit)) chestContainsMatch = true;
             }
         }
+        if (!chestIsEmpty && !chestContainsMatch) return false; // Contaminated
 
-        if (!chestIsEmpty && !chestContainsMatch) return false;
+        // 2. Capacity Check
+        // Do we have ANY space? (Matching stack with room OR empty slot)
+        boolean hasSpace = false;
 
+        // Check for merge space
         for (int i = 0; i < container.getContainerSize(); i++) {
             ItemStack slotStack = container.getItem(i);
             if (ItemStack.isSameItemSameComponents(slotStack, toDeposit) && slotStack.getCount() < slotStack.getMaxStackSize()) {
-                int space = slotStack.getMaxStackSize() - slotStack.getCount();
-                int moveAmount = Math.min(space, toDeposit.getCount());
-                if (moveAmount > 0) {
-                    controller.scheduleDeposit(pos, i);
-                    return true;
+                hasSpace = true;
+                break;
+            }
+        }
+        // Check for empty slot
+        if (!hasSpace) {
+            for (int i = 0; i < container.getContainerSize(); i++) {
+                if (container.getItem(i).isEmpty()) {
+                    hasSpace = true;
+                    break;
                 }
             }
         }
-        for (int i = 0; i < container.getContainerSize(); i++) {
-            if (container.getItem(i).isEmpty()) {
-                controller.scheduleDeposit(pos, i);
-                return true;
-            }
+
+        if (hasSpace) {
+            // Success! The controller will handle the details of moving the items.
+            controller.scheduleDeposit(pos);
+            return true;
         }
+
         return false;
     }
 
@@ -134,7 +134,6 @@ public class InteractToDepositBehavior implements Behavior {
         CugoBrainAccessor brain = (CugoBrainAccessor) golem;
         ((CugoBrain)brain.scg$getBrain()).getMemoryManager().updateMemory(pos, contents);
     }
-
     private void toggleChestLid(Level level, BlockPos pos, boolean open) {
         BlockState state = level.getBlockState(pos);
         level.blockEvent(pos, state.getBlock(), 1, open ? 1 : 0);

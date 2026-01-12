@@ -2,11 +2,14 @@ package net.nullcoil.scg.cugo.behaviors;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.animal.coppergolem.CopperGolem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.ChestBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
@@ -70,7 +73,11 @@ public class InteractWithChestBehavior implements Behavior {
 
         CugoAnimationAccessor anim = (CugoAnimationAccessor) golem;
         toggleChestLid(golem.level(), homePos, true);
-        golem.playSound(SoundEvents.CHEST_OPEN, 0.5f, 1.0f);
+        if(golem.level().getBlockState(homePos).is(BlockTags.COPPER_CHESTS)) {
+            golem.level().playSound(null,homePos,SoundEvents.COPPER_CHEST_OPEN, SoundSource.BLOCKS);
+        } else {
+            golem.level().playSound(null,homePos,SoundEvents.CHEST_OPEN,SoundSource.BLOCKS, 0.5f, 1.0f);
+        }
 
         if (success) {
             anim.scg$setInteractState(StateMachine.Interact.GET);

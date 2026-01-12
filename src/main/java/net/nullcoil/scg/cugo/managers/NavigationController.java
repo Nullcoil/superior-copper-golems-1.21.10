@@ -2,6 +2,8 @@ package net.nullcoil.scg.cugo.managers;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.ai.navigation.PathNavigation;
@@ -32,7 +34,7 @@ public class NavigationController {
     // Data
     private BlockPos depositTarget = null;
     private BlockPos pendingChestPos = null;
-    private int pendingSlotIndex = -1;
+    private int pendingSlotIndex = -1; // Only used for Pickup now
 
     // Behaviors
     private final RandomWanderBehavior wanderBehavior = new RandomWanderBehavior();
@@ -81,7 +83,7 @@ public class NavigationController {
         decideNextMove();
     }
 
-    // ... (decideNextMove, Setters, Getters unchanged) ...
+    // ... (decideNextMove same as before) ...
     private void decideNextMove() {
         ItemStack heldItem = golem.getMainHandItem();
         boolean success = false;
@@ -144,7 +146,11 @@ public class NavigationController {
     public void markDepositFailed() { this.forceWander = true; }
     public void markInteractionFailed() { this.forceWander = true; }
     public void schedulePickup(BlockPos pos, int slotIndex) { this.pendingChestPos = pos; this.pendingSlotIndex = slotIndex; }
-    public void scheduleDeposit(BlockPos pos, int slotIndex) { this.pendingChestPos = pos; this.pendingSlotIndex = slotIndex; }
+
+    // UPDATED: No slot index needed for deposit
+    public void scheduleDeposit(BlockPos pos) {
+        this.pendingChestPos = pos;
+    }
 
     private void finalizeItemPickup() {
         if (pendingChestPos != null && pendingSlotIndex != -1) {
@@ -155,7 +161,6 @@ public class NavigationController {
                 if (!stack.isEmpty()) {
                     ItemStack taken = container.removeItem(pendingSlotIndex, stack.getCount());
                     golem.setItemInHand(InteractionHand.MAIN_HAND, taken);
-                    // SOUND REMOVED: Now plays in InteractWithChestBehavior
                 }
             }
             pendingChestPos = null;
@@ -163,26 +168,45 @@ public class NavigationController {
         }
     }
 
+    // UPDATED: "Smart Dump" Logic
     private void finalizeDeposit() {
-        if (pendingChestPos != null && pendingSlotIndex != -1) {
+        if (pendingChestPos != null) {
             Level level = golem.level();
             Container container = getContainer(level, pendingChestPos);
             ItemStack toDeposit = golem.getMainHandItem();
 
             if (container != null && !toDeposit.isEmpty()) {
-                ItemStack slotStack = container.getItem(pendingSlotIndex);
 
-                if (slotStack.isEmpty()) {
-                    container.setItem(pendingSlotIndex, toDeposit.copy());
-                    golem.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
-                } else if (ItemStack.isSameItemSameComponents(slotStack, toDeposit)) {
-                    int space = slotStack.getMaxStackSize() - slotStack.getCount();
-                    int moveAmount = Math.min(space, toDeposit.getCount());
-                    slotStack.grow(moveAmount);
-                    toDeposit.shrink(moveAmount);
-                    golem.setItemInHand(InteractionHand.MAIN_HAND, toDeposit.isEmpty() ? ItemStack.EMPTY : toDeposit);
+                // PASS 1: MERGE (Fill existing stacks)
+                for (int i = 0; i < container.getContainerSize(); i++) {
+                    if (toDeposit.isEmpty()) break;
+
+                    ItemStack slotStack = container.getItem(i);
+                    if (ItemStack.isSameItemSameComponents(slotStack, toDeposit)) {
+                        int space = slotStack.getMaxStackSize() - slotStack.getCount();
+                        int moveAmount = Math.min(space, toDeposit.getCount());
+
+                        if (moveAmount > 0) {
+                            slotStack.grow(moveAmount);
+                            toDeposit.shrink(moveAmount);
+                        }
+                    }
                 }
-                // SOUND REMOVED: Now plays in InteractToDepositBehavior
+
+                // PASS 2: FILL (Use empty slots for leftovers)
+                for (int i = 0; i < container.getContainerSize(); i++) {
+                    if (toDeposit.isEmpty()) break;
+
+                    if (container.getItem(i).isEmpty()) {
+                        container.setItem(i, toDeposit.copy()); // Moves entire remaining stack
+                        toDeposit.setCount(0);
+                    }
+                }
+
+                // Update Hand
+                golem.setItemInHand(InteractionHand.MAIN_HAND, toDeposit.isEmpty() ? ItemStack.EMPTY : toDeposit);
+
+                // Update Memory & Close
                 updateChestMemory(golem, pendingChestPos);
             }
             pendingChestPos = null;
@@ -206,7 +230,11 @@ public class NavigationController {
             Level level = golem.level();
             BlockState state = level.getBlockState(pos);
             level.blockEvent(pos, state.getBlock(), 1, 0);
-            golem.playSound(SoundEvents.CHEST_CLOSE, 0.5f, 1.0f);
+            if(state.is(BlockTags.COPPER_CHESTS)) {
+                level.playSound(null,pos,SoundEvents.COPPER_CHEST_CLOSE,SoundSource.BLOCKS, 0.5f, 1.0f);
+            } else {
+                level.playSound(null,pos,SoundEvents.CHEST_CLOSE,SoundSource.BLOCKS,0.5f,1.0f);
+            }
         }
     }
     private Container getContainer(Level level, BlockPos pos) {
