@@ -3,7 +3,8 @@ package net.nullcoil.scg.config;
 @SuppressWarnings("unused")
 public class Config
 {
-    private final String _comment = "Download mod menu for better config experience and option explanations with translation";
+    private final String _comment = "Download mod menu for better config experience" +
+            " and option explanations with translation";
 
     public int maxStackSize = 64;
 
@@ -13,11 +14,12 @@ public class Config
     public int verticalRange = 5;    // for pathfinding and finding chests
     public int wanderDuration = 3;   // length of random wander
     public int searchDuration = 30;
-
-    public boolean redstoneBoost = true;
     public int pingLineDensity = 2;
-    public boolean debugMode = true;
+
     public boolean rechargeableStatues = true;
+    public boolean redstoneBoost = true;
+
+    public boolean debugMode = true;
 
     public Config() {}
 }
