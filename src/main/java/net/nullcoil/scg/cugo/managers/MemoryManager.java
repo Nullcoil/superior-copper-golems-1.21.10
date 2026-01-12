@@ -10,6 +10,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
+import net.nullcoil.scg.util.Debug;
 import net.nullcoil.scg.util.ModTags;
 
 import java.util.*;
@@ -119,6 +120,7 @@ public class MemoryManager {
                 });
             }
         });
+        Debug.log("Memory: Loaded " + knownChests.size() + " known chests and " + seenChests.size() + " seen chests.");
     }
 
     // --- STANDARD METHODS (Unchanged) ---
@@ -126,6 +128,7 @@ public class MemoryManager {
     public void markAsSeen(BlockPos pos) {
         if (!knownChests.containsKey(pos) && !seenChests.contains(pos)) {
             seenChests.add(pos);
+            // Debug.log("Memory: Marked " + pos + " as Seen.");
         }
     }
 
@@ -136,6 +139,7 @@ public class MemoryManager {
             snapshot.set(i, contents.get(i).copy());
         }
         knownChests.put(pos, snapshot);
+        Debug.log("Memory: Updated contents for " + pos);
     }
 
     public BlockPos findChestWithItem(Level level, ItemStack itemToMatch, BlockPos currentPos, Set<BlockPos> ignoreList) {
@@ -158,6 +162,7 @@ public class MemoryManager {
                 }
             }
         }
+        if (bestPos != null) Debug.log("Memory: Found chest with matching item for merge: " + bestPos);
         return bestPos;
     }
 
@@ -179,6 +184,7 @@ public class MemoryManager {
                 }
             }
         }
+        if (bestPos != null) Debug.log("Memory: Found empty chest: " + bestPos);
         return bestPos;
     }
 
@@ -196,6 +202,7 @@ public class MemoryManager {
                 bestPos = pos;
             }
         }
+        if (bestPos != null) Debug.log("Memory: Found nearest seen (unknown) chest: " + bestPos);
         return bestPos;
     }
 

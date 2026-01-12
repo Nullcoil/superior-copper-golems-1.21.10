@@ -7,6 +7,7 @@ import net.nullcoil.scg.cugo.CugoBrain;
 import net.nullcoil.scg.cugo.managers.MemoryManager;
 import net.nullcoil.scg.cugo.managers.NavigationController;
 import net.nullcoil.scg.util.CugoBrainAccessor;
+import net.nullcoil.scg.util.Debug;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -16,7 +17,10 @@ public record DepositItemBehavior(NavigationController controller) implements Be
     @Override
     public boolean run(CopperGolem golem) {
         ItemStack held = golem.getMainHandItem();
-        if (held.isEmpty()) return false;
+        if (held.isEmpty()) {
+            // Debug.log("DepositItem: Hand empty, cannot deposit."); // Too spammy likely
+            return false;
+        }
 
         CugoBrainAccessor brainAccessor = (CugoBrainAccessor) golem;
         MemoryManager memory = ((CugoBrain) brainAccessor.scg$getBrain()).getMemoryManager();
@@ -29,22 +33,29 @@ public record DepositItemBehavior(NavigationController controller) implements Be
         for (int attempts = 0; attempts < 5; attempts++) {
 
             BlockPos target = null;
+            String strategy = "None";
 
             // 1. Strict Merge
             target = memory.findChestWithItem(golem.level(), held, currentPos, failedPaths);
+            if (target != null) strategy = "Merge";
 
             // 2. Empty Chest
             if (target == null) {
                 target = memory.findEmptyChest(golem.level(), currentPos, failedPaths);
+                if (target != null) strategy = "EmptyChest";
             }
 
             // 3. Explore Unknown
             if (target == null) {
                 target = memory.getNearestSeenChest(golem.level(), currentPos, failedPaths);
+                if (target != null) strategy = "ExploreSeen";
             }
 
             // If absolutely nothing found, stop trying
-            if (target == null) return false;
+            if (target == null) {
+                Debug.log("DepositItem: No suitable chest found after " + attempts + " attempts.");
+                return false;
+            }
 
             // Try to move
             boolean moveSuccess = true;
@@ -56,15 +67,17 @@ public record DepositItemBehavior(NavigationController controller) implements Be
             }
 
             if (moveSuccess) {
+                Debug.log("DepositItem: Moving to " + target + " via [" + strategy + "].");
                 controller.setDepositTarget(target);
                 return true; // Success!
             } else {
                 // Failed to reach this specific target. Blacklist it and loop again.
-                // System.out.println("Cugo Pathfinding: Failed to reach " + target + ". Retrying next best option...");
+                Debug.log("DepositItem: Pathfinding failed to " + target + ". Blacklisting and retrying...");
                 failedPaths.add(target);
             }
         }
 
+        Debug.log("DepositItem: Failed to move to any valid target.");
         return false;
     }
 }

@@ -16,6 +16,8 @@ public class Config
 
     public boolean redstoneBoost = true;
     public int pingLineDensity = 2;
+    public boolean debugMode = true;
+    public boolean rechargeableStatues = true;
 
     public Config() {}
 }

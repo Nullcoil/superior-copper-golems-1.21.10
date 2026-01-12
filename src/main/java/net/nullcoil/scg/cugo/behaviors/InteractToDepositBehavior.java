@@ -17,6 +17,7 @@ import net.nullcoil.scg.cugo.managers.NavigationController;
 import net.nullcoil.scg.cugo.managers.StateMachine;
 import net.nullcoil.scg.util.CugoAnimationAccessor;
 import net.nullcoil.scg.util.CugoBrainAccessor;
+import net.nullcoil.scg.util.Debug;
 
 public record InteractToDepositBehavior(NavigationController controller) implements Behavior {
 
@@ -29,7 +30,10 @@ public record InteractToDepositBehavior(NavigationController controller) impleme
 
     @Override
     public boolean run(CopperGolem golem) {
-        if (!canInteract(golem)) return false;
+        if (!canInteract(golem)) {
+            // Debug.log("InteractToDeposit: Cannot interact (range/target check failed).");
+            return false;
+        }
 
         BlockPos target = controller.getDepositTarget();
 
@@ -46,9 +50,11 @@ public record InteractToDepositBehavior(NavigationController controller) impleme
         boolean success = tryDeposit(golem, target);
 
         if (success) {
+            Debug.log("InteractToDeposit: Deposit verified valid. Animating DROP.");
             anim.scg$setInteractState(StateMachine.Interact.DROP);
             golem.playSound(SoundEvents.COPPER_GOLEM_ITEM_DROP, 1.0f, 1.0f);
         } else {
+            Debug.log("InteractToDeposit: Deposit rejected (Contaminated or Full). Animating NODROP.");
             anim.scg$setInteractState(StateMachine.Interact.NODROP);
             golem.playSound(SoundEvents.COPPER_GOLEM_ITEM_NO_DROP, 1.0f, 1.0f);
             controller.markDepositFailed();
@@ -73,7 +79,10 @@ public record InteractToDepositBehavior(NavigationController controller) impleme
     private boolean tryDeposit(CopperGolem golem, BlockPos pos) {
         Level level = golem.level();
         Container container = getContainer(level, pos);
-        if (container == null) return false;
+        if (container == null) {
+            Debug.log("InteractToDeposit: Target is not a container.");
+            return false;
+        }
         ItemStack toDeposit = golem.getMainHandItem();
 
         // 1. Purity Check
@@ -86,7 +95,10 @@ public record InteractToDepositBehavior(NavigationController controller) impleme
                 if (ItemStack.isSameItemSameComponents(stack, toDeposit)) chestContainsMatch = true;
             }
         }
-        if (!chestIsEmpty && !chestContainsMatch) return false; // Contaminated
+        if (!chestIsEmpty && !chestContainsMatch) {
+            Debug.log("InteractToDeposit: Contamination detected. Chest has items, but none match held item.");
+            return false; // Contaminated
+        }
 
         // 2. Capacity Check
         // Do we have ANY space? (Matching stack with room OR empty slot)
@@ -116,6 +128,7 @@ public record InteractToDepositBehavior(NavigationController controller) impleme
             return true;
         }
 
+        Debug.log("InteractToDeposit: Chest is full.");
         return false;
     }
 

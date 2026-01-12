@@ -20,6 +20,7 @@ import net.nullcoil.scg.cugo.behaviors.*;
 import net.nullcoil.scg.util.CugoAnimationAccessor;
 import net.nullcoil.scg.util.CugoBrainAccessor;
 import net.nullcoil.scg.util.CugoHomeAccessor;
+import net.nullcoil.scg.util.Debug;
 
 public class NavigationController {
 
@@ -42,6 +43,7 @@ public class NavigationController {
     private final InteractWithChestBehavior takeBehavior = new InteractWithChestBehavior(this);
     private final DepositItemBehavior depositMoveBehavior = new DepositItemBehavior(this);
     private final InteractToDepositBehavior depositActBehavior = new InteractToDepositBehavior(this);
+    private final SelfPreservationBehavior selfPreservationBehavior = new SelfPreservationBehavior();
 
     public NavigationController(CopperGolem golem) {
         this.golem = golem;
@@ -53,6 +55,7 @@ public class NavigationController {
 
             if (cooldownTimer == 0) {
                 if (isInteracting) {
+                    Debug.log("NavController: Interaction timer finished. Finalizing state.");
                     if (currentIntent == StateMachine.Intent.DEPOSITING) {
                         finalizeDeposit();
                         closeChest(depositTarget);
@@ -90,6 +93,7 @@ public class NavigationController {
         boolean startingInteraction = false;
 
         if (forceWander) {
+            Debug.log("NavController: ForceWander active. Forcing RandomWander.");
             if (wanderBehavior.run(golem)) {
                 success = true;
                 this.currentIntent = StateMachine.Intent.WANDERING;
@@ -101,26 +105,43 @@ public class NavigationController {
         }
 
         if (!success) {
+            if(selfPreservationBehavior.run(golem)) {
+                Debug.log("Behavior Triggered: Self Preservation. Pausing logic.");
+                this.isInteracting = false;
+                this.cooldownTimer = 20;
+                return;
+            }
+
             if (heldItem.isEmpty()) {
+                // TRYING TO GET ITEM
                 if (this.currentIntent == StateMachine.Intent.RETURNING_HOME && takeBehavior.canInteract(golem)) {
+                    // Debug.log("NavController: Attempting InteractWithChestBehavior (Take)");
                     if (takeBehavior.run(golem)) { success = true; startingInteraction = true; }
                 }
                 if (!success && homeBehavior.run(golem)) {
+                    // Debug.log("NavController: Attempting ReturnHomeBehavior");
                     success = true;
                     this.currentIntent = StateMachine.Intent.RETURNING_HOME;
                 }
             } else {
+                // TRYING TO DEPOSIT ITEM
                 if (this.currentIntent == StateMachine.Intent.DEPOSITING && depositActBehavior.canInteract(golem)) {
+                    // Debug.log("NavController: Attempting InteractToDepositBehavior");
                     if (depositActBehavior.run(golem)) { success = true; startingInteraction = true; }
                 }
                 if (!success && depositMoveBehavior.run(golem)) {
+                    // Debug.log("NavController: Attempting DepositItemBehavior (Move)");
                     success = true;
                     this.currentIntent = StateMachine.Intent.DEPOSITING;
                 }
             }
-            if (!success && wanderBehavior.run(golem)) {
-                success = true;
-                this.currentIntent = StateMachine.Intent.WANDERING;
+            if (!success) {
+                // FALLBACK
+                // Debug.log("NavController: Fallback to Wander.");
+                if (wanderBehavior.run(golem)) {
+                    success = true;
+                    this.currentIntent = StateMachine.Intent.WANDERING;
+                }
             }
         }
 
@@ -128,14 +149,17 @@ public class NavigationController {
             if (startingInteraction) {
                 this.isInteracting = true;
                 this.cooldownTimer = 60;
+                Debug.log("NavController: Interaction started. Pausing for 60 ticks.");
             } else if (!golem.getNavigation().isDone()) {
                 this.isInteracting = false;
                 this.cooldownTimer = 5;
             } else {
                 this.isInteracting = false;
                 this.cooldownTimer = ConfigHandler.getConfig().wanderDuration * 20;
+                Debug.log("NavController: Idling for " + this.cooldownTimer + " ticks.");
             }
         } else {
+            // Debug.log("NavController: All behaviors failed. Waiting 20 ticks.");
             this.isInteracting = false;
             this.cooldownTimer = 20;
         }
@@ -143,8 +167,14 @@ public class NavigationController {
 
     public void setDepositTarget(BlockPos pos) { this.depositTarget = pos; }
     public BlockPos getDepositTarget() { return this.depositTarget; }
-    public void markDepositFailed() { this.forceWander = true; }
-    public void markInteractionFailed() { this.forceWander = true; }
+    public void markDepositFailed() {
+        Debug.log("NavController: Marking Deposit Failed. Force Wandering.");
+        this.forceWander = true;
+    }
+    public void markInteractionFailed() {
+        Debug.log("NavController: Marking Interaction Failed. Force Wandering.");
+        this.forceWander = true;
+    }
     public void schedulePickup(BlockPos pos, int slotIndex) { this.pendingChestPos = pos; this.pendingSlotIndex = slotIndex; }
 
     // UPDATED: No slot index needed for deposit
@@ -161,6 +191,7 @@ public class NavigationController {
                 if (!stack.isEmpty()) {
                     ItemStack taken = container.removeItem(pendingSlotIndex, stack.getCount());
                     golem.setItemInHand(InteractionHand.MAIN_HAND, taken);
+                    Debug.log("NavController: Pickup Finalized. Got " + taken);
                 }
             }
             pendingChestPos = null;
@@ -202,6 +233,8 @@ public class NavigationController {
                         toDeposit.setCount(0);
                     }
                 }
+
+                Debug.log("NavController: Deposit Finalized. Remaining in Hand: " + toDeposit.getCount());
 
                 // Update Hand
                 golem.setItemInHand(InteractionHand.MAIN_HAND, toDeposit.isEmpty() ? ItemStack.EMPTY : toDeposit);

@@ -7,6 +7,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import net.nullcoil.scg.config.ConfigHandler;
 import net.nullcoil.scg.util.CugoHomeAccessor;
+import net.nullcoil.scg.util.Debug;
 import net.nullcoil.scg.util.ModTags;
 
 public class ReturnHomeBehavior implements Behavior {
@@ -17,16 +18,21 @@ public class ReturnHomeBehavior implements Behavior {
 
         CugoHomeAccessor accessor = (CugoHomeAccessor) golem;
         BlockPos homePos = accessor.scg$getHomePos();
-        if (homePos == null) return false;
+        if (homePos == null) {
+            // Debug.log("ReturnHome: No home assigned.");
+            return false;
+        }
 
         BlockState state = golem.level().getBlockState(homePos);
         if (!state.is(ModTags.Blocks.CUGO_CONTAINER_INPUTS)) {
+            Debug.log("ReturnHome: Home invalid (block removed or changed). Forgetting home.");
             accessor.scg$setHomePos(null);
             return false;
         }
 
         // 1. Box Stop Check
         if (isInInteractRange(golem, homePos)) {
+            // Debug.log("ReturnHome: In range of home. Stopping.");
             golem.getNavigation().stop();
             return false;
         }
@@ -34,6 +40,7 @@ public class ReturnHomeBehavior implements Behavior {
         // 2. Anti-Stuck
         BlockPos below = golem.blockPosition().below();
         if (below.equals(homePos)) {
+            Debug.log("ReturnHome: Standing ON TOP of home. Stepping off.");
             Vec3 randomStep = DefaultRandomPos.getPosAway(golem, 2, 1, Vec3.atBottomCenterOf(homePos));
             if (randomStep != null) {
                 golem.getNavigation().moveTo(randomStep.x, randomStep.y, randomStep.z, 1.0D);
@@ -47,6 +54,7 @@ public class ReturnHomeBehavior implements Behavior {
                 golem.getNavigation().getTargetPos() == null ||
                 !golem.getNavigation().getTargetPos().equals(homePos)) {
 
+            // Debug.log("ReturnHome: Moving towards " + homePos);
             moveSuccess = golem.getNavigation().moveTo(homePos.getX(), homePos.getY(), homePos.getZ(), 1.0D);
         }
 

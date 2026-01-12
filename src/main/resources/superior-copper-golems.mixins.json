@@ -3,11 +3,17 @@
   "package": "net.nullcoil.scg.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "CopperGolemStatueBlockAccessor",
+    "Cugo_AxeStatueMixin",
     "Cugo_BrainIntegrationMixin",
     "Cugo_EntityDataMixin",
+    "Cugo_GolemSpawnDebugMixin",
     "Cugo_InteractionMixin",
     "Cugo_NoAIStepMixin",
     "Cugo_NoBrainMixin",
+    "Cugo_StatueRechargeMixin",
+    "Cugo_WeatheringMixin",
+    "Cugo_WeatheringStatueRechargeMixin",
     "ItemContainerContentsAccessor",
     "PoweredBlockMixin"
   ],

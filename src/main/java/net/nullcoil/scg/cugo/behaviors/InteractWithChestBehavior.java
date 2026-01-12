@@ -21,6 +21,7 @@ import net.nullcoil.scg.cugo.managers.NavigationController;
 import net.nullcoil.scg.cugo.managers.StateMachine;
 import net.nullcoil.scg.util.CugoAnimationAccessor;
 import net.nullcoil.scg.util.CugoHomeAccessor;
+import net.nullcoil.scg.util.Debug;
 
 public record InteractWithChestBehavior(NavigationController controller) implements Behavior {
 
@@ -45,7 +46,10 @@ public record InteractWithChestBehavior(NavigationController controller) impleme
         ));
         if (result.getType() == HitResult.Type.BLOCK) {
             BlockPos hitPos = result.getBlockPos();
-            if (!hitPos.equals(homePos)) return false;
+            if (!hitPos.equals(homePos)) {
+                // Debug.log("InteractChest: LOS Blocked by " + hitPos);
+                return false;
+            }
         }
 
         return true;
@@ -73,12 +77,14 @@ public record InteractWithChestBehavior(NavigationController controller) impleme
         }
 
         if (success) {
+            Debug.log("InteractChest: Found item in slot " + foundSlot + ". Animating GET.");
             anim.scg$setInteractState(StateMachine.Interact.GET);
             // TRIGGER SOUND: Starts immediately with animation
             golem.playSound(SoundEvents.COPPER_GOLEM_ITEM_GET, 1.0f, 1.0f);
 
             controller.schedulePickup(homePos, foundSlot);
         } else {
+            Debug.log("InteractChest: Chest is empty. Animating NOGET.");
             anim.scg$setInteractState(StateMachine.Interact.NOGET);
             // TRIGGER SOUND: Disappointment immediately
             golem.playSound(SoundEvents.COPPER_GOLEM_ITEM_NO_GET, 1.0f, 1.0f);

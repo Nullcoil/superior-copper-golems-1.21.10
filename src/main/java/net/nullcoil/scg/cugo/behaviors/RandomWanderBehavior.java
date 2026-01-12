@@ -7,16 +7,14 @@ import net.minecraft.world.entity.ai.navigation.PathNavigation;
 import net.minecraft.world.entity.ai.util.DefaultRandomPos;
 import net.minecraft.world.entity.ai.util.LandRandomPos;
 import net.minecraft.world.entity.animal.coppergolem.CopperGolem;
+import net.minecraft.world.level.block.WeatheringCopper;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.phys.Vec3;
 import net.nullcoil.scg.config.ConfigHandler;
 import net.nullcoil.scg.cugo.CugoBrain;
 import net.nullcoil.scg.cugo.managers.MemoryManager;
-import net.nullcoil.scg.util.CugoBrainAccessor;
-import net.nullcoil.scg.util.CugoHomeAccessor;
-import net.nullcoil.scg.util.DoubleChestHelper;
-import net.nullcoil.scg.util.ModTags;
+import net.nullcoil.scg.util.*;
 
 import java.util.HashSet;
 import java.util.Random;
@@ -30,23 +28,56 @@ public class RandomWanderBehavior implements Behavior {
 
     @Override
     public boolean run(CopperGolem golem) {
+        CugoHomeAccessor homeAccessor = (CugoHomeAccessor) golem;
+        CugoWeatheringAccessor weathering = (CugoWeatheringAccessor) golem;
         boolean isUrgent = !golem.getMainHandItem().isEmpty();
+
+        // --- 0. AUTO-HOME CHECK ---
+        // If the Golem doesn't have a home, check the block directly below it.
+        // This allows it to "claim" a chest immediately upon spawning/recharging
+        // without waiting for a random linger scan.
+        if (homeAccessor.scg$getHomePos() == null) {
+            BlockPos below = golem.blockPosition().below();
+            if (golem.level().getBlockState(below).is(ModTags.Blocks.CUGO_CONTAINER_INPUTS)) {
+                BlockPos homePos = below.immutable();
+                homeAccessor.scg$setHomePos(homePos);
+                Debug.log("Wander: Auto-assigned home to container below: " + homePos);
+            }
+        }
+
+        // OLD BATTERY CHECK: Oxidized AND Unwaxed
+        boolean isOldBattery = weathering.scg$getWeatherState() == WeatheringCopper.WeatherState.OXIDIZED && !weathering.scg$isWaxed();
 
         // --- 1. SCANNING & LINGERING ---
         if (isUrgent) {
-            // URGENT MODE:
-            // Always scan (so we find chests while rushing), but NEVER Stop/Linger.
             scanSurroundings(golem);
         } else {
-            // NORMAL MODE:
-            // Roll for fatigue. If tired, stop and scan.
             double roll = random.nextDouble() * 100.0;
+
+            // If we roll higher than our current energy, we stop to rest/scan.
             if (roll > currentWanderChance || currentWanderChance <= 0) {
-                System.out.println(String.format("Cugo Linger: Roll (%.1f) > Chance (%.1f). Taking a break.", roll, currentWanderChance));
+
+                if (currentWanderChance < 100) {
+                    Debug.log("Wander: Lingering. Roll(" + String.format("%.1f", roll) + ") > Battery(" + String.format("%.1f", currentWanderChance) + "%)");
+                }
+
                 scanSurroundings(golem);
-                resetTiredness();
+
+                // FATIGUE LOGIC
+                if (isOldBattery) {
+                    // Lingering in Oxidized state: We log, but do NOT call resetTiredness().
+                    if (currentWanderChance <= 0) {
+                        Debug.log("Critical Failure: Battery Depleted. Initiating Shutdown.");
+                        weathering.scg$startShutdown();
+                    }
+                } else {
+                    // Normal Golem: Resting restores energy.
+                    if (currentWanderChance < 100) Debug.log("Wander: Rested. Battery recharged.");
+                    resetTiredness();
+                }
+
                 golem.getNavigation().stop();
-                return true; // We are successfully "doing nothing"
+                return true; // Successfully "doing nothing"
             }
         }
 
@@ -56,23 +87,15 @@ public class RandomWanderBehavior implements Behavior {
         PathNavigation nav = golem.getNavigation();
         Vec3 target = null;
 
-        // Attempt 1: Standard Land Pos
         target = LandRandomPos.getPos(golem, range / 2, vertical);
-
-        // Attempt 2: Fallback Random Pos
-        if (target == null) {
-            target = DefaultRandomPos.getPos(golem, range / 2, vertical);
-        }
-
-        // Attempt 3: Desperation (Random Air Block)
+        if (target == null) target = DefaultRandomPos.getPos(golem, range / 2, vertical);
         if (target == null) {
             for(int k=0; k<10; k++) {
                 BlockPos randomPos = golem.blockPosition().offset(
-                        random.nextInt(range) - (range/2),
-                        random.nextInt(vertical) - (vertical/2),
-                        random.nextInt(range) - (range/2)
+                        random.nextInt(range)-(range/2),
+                        random.nextInt(vertical)-(vertical/2),
+                        random.nextInt(range)-(range/2)
                 );
-                // Simple check for valid spot
                 if(golem.level().isEmptyBlock(randomPos) && golem.level().getBlockState(randomPos.below()).isSolid()) {
                     target = Vec3.atBottomCenterOf(randomPos);
                     break;
@@ -84,26 +107,18 @@ public class RandomWanderBehavior implements Behavior {
         if (target != null) {
             Path path = nav.createPath(target.x, target.y, target.z, 0);
             if (path != null && path.canReach()) {
-
                 boolean moved = nav.moveTo(path, 1.0D);
-
                 if (moved) {
-                    // Only apply fatigue if we are NOT urgent.
-                    // If urgent, we run infinitely until the job is done.
                     if (!isUrgent) {
-                        applyFatigue();
+                        applyFatigue(weathering);
                     } else {
-                        // Optional: Reset tiredness so he is fresh when he finishes working
-                        resetTiredness();
+                        // Work adrenaline: recharges non-oxidized golems instantly
+                        if (!isOldBattery) resetTiredness();
                     }
                     return true;
                 }
             }
         }
-
-        // If we reached here, we failed to find a path.
-        // In Urgent mode, this just means "Try again next tick".
-        // In Normal mode, we just stand still.
         return false;
     }
 
@@ -112,20 +127,15 @@ public class RandomWanderBehavior implements Behavior {
         BlockPos golemPos = golem.blockPosition();
         int range = ConfigHandler.getConfig().horizontalRange;
         int vRange = ConfigHandler.getConfig().verticalRange;
-
         CugoBrainAccessor brainAccessor = (CugoBrainAccessor) golem;
         CugoHomeAccessor homeAccessor = (CugoHomeAccessor) golem;
         MemoryManager memory = ((CugoBrain) brainAccessor.scg$getBrain()).getMemoryManager();
-
         boolean needsHome = homeAccessor.scg$getHomePos() == null;
         BlockPos bestHomeCandidate = null;
         double closestHomeDist = Double.MAX_VALUE;
         Set<BlockPos> uniqueChests = new HashSet<>();
 
-        for (BlockPos pos : BlockPos.betweenClosed(
-                golemPos.offset(-range, -vRange, -range),
-                golemPos.offset(range, vRange, range))) {
-
+        for (BlockPos pos : BlockPos.betweenClosed(golemPos.offset(-range, -vRange, -range), golemPos.offset(range, vRange, range))) {
             BlockState state = level.getBlockState(pos);
             boolean isInput = state.is(ModTags.Blocks.CUGO_CONTAINER_INPUTS);
             boolean isOutput = state.is(ModTags.Blocks.CUGO_CONTAINER_OUTPUTS);
@@ -134,9 +144,7 @@ public class RandomWanderBehavior implements Behavior {
                 BlockPos canonical = DoubleChestHelper.getCanonicalPos(level, pos, state).immutable();
                 if (uniqueChests.contains(canonical)) continue;
                 uniqueChests.add(canonical);
-
                 if (canAccess(golemPos, canonical)) {
-                    // Home Finder
                     if (needsHome && isInput) {
                         double dist = golemPos.distSqr(canonical);
                         if (dist < closestHomeDist) {
@@ -144,16 +152,16 @@ public class RandomWanderBehavior implements Behavior {
                             bestHomeCandidate = canonical;
                         }
                     }
-                    // Memory & Ping
                     if (!memory.hasMemory(canonical)) {
+                        Debug.log("Wander: Discovered Container at " + canonical);
                         memory.markAsSeen(canonical);
                         drawParticleLine(level, golem.getEyePosition(), Vec3.atCenterOf(canonical));
                     }
                 }
             }
         }
-
         if (bestHomeCandidate != null) {
+            Debug.log("Wander: Home Assigned: " + bestHomeCandidate);
             homeAccessor.scg$setHomePos(bestHomeCandidate);
         }
     }
@@ -166,25 +174,32 @@ public class RandomWanderBehavior implements Behavior {
     private void drawParticleLine(ServerLevel level, Vec3 start, Vec3 end) {
         double distance = start.distanceTo(end);
         int density = Math.max(1, ConfigHandler.getConfig().pingLineDensity);
-
         int points = (int) (distance * density);
         Vec3 direction = end.subtract(start).normalize();
         double stepSize = 1.0 / density;
-
         for (int i = 0; i < points; i++) {
             Vec3 p = start.add(direction.scale(i * stepSize));
-            level.sendParticles(new DustParticleOptions(0xFF0000, 1.0f),
-                    p.x, p.y, p.z,
-                    1, 0, 0, 0, 0);
+            level.sendParticles(new DustParticleOptions(0xFF0000, 1.0f), p.x, p.y, p.z, 1, 0, 0, 0, 0);
         }
     }
 
-    private void applyFatigue() {
+    private void applyFatigue(CugoWeatheringAccessor weathering) {
         stepIndex++;
-        int penalty = getFibonacci(stepIndex);
+
+        // NEW LINEAR DRAIN LOGIC:
+        // If Oxidized and Unwaxed, drain is fixed at 1% per step.
+        // Otherwise, use Fibonacci (which only really matters if the golem stops recharging).
+        int penalty;
+        if (weathering.scg$getWeatherState() == WeatheringCopper.WeatherState.OXIDIZED && !weathering.scg$isWaxed()) {
+            penalty = 1;
+        } else {
+            penalty = getFibonacci(stepIndex);
+        }
+
         currentWanderChance -= penalty;
         if (currentWanderChance < 0) currentWanderChance = 0;
-        // System.out.println(String.format("Cugo Fatigue: Penalty -%d. New Wander Chance: %.1f%%", penalty, currentWanderChance));
+
+        Debug.log("Battery: " + String.format("%.1f", currentWanderChance) + "% (-" + penalty + ")");
     }
 
     private void resetTiredness() {
