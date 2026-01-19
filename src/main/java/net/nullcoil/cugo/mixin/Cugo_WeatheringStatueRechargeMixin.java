@@ -22,7 +22,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class Cugo_WeatheringStatueRechargeMixin {
 
     @Inject(method = "useItemOn", at = @At("HEAD"), cancellable = true)
-    private void scg$interceptWeatheringStatueUseItemOn(ItemStack itemStack, BlockState blockState, Level level, BlockPos blockPos, Player player, InteractionHand interactionHand, BlockHitResult blockHitResult, CallbackInfoReturnable<InteractionResult> cir) {
+    private void cugo$interceptWeatheringStatueUseItemOn(ItemStack itemStack, BlockState blockState, Level level, BlockPos blockPos, Player player, InteractionHand interactionHand, BlockHitResult blockHitResult, CallbackInfoReturnable<InteractionResult> cir) {
 
         boolean isAxe = itemStack.is(ItemTags.AXES) || itemStack.getItem() instanceof AxeItem;
 

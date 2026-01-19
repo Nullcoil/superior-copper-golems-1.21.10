@@ -51,11 +51,11 @@ public record InteractToDepositBehavior(NavigationController controller) impleme
 
         if (success) {
             Debug.log("InteractToDeposit: Deposit verified valid. Animating DROP.");
-            anim.scg$setInteractState(StateMachine.Interact.DROP);
+            anim.cugo$setInteractState(StateMachine.Interact.DROP);
             golem.playSound(SoundEvents.COPPER_GOLEM_ITEM_DROP, 1.0f, 1.0f);
         } else {
             Debug.log("InteractToDeposit: Deposit rejected (Contaminated or Full). Animating NODROP.");
-            anim.scg$setInteractState(StateMachine.Interact.NODROP);
+            anim.cugo$setInteractState(StateMachine.Interact.NODROP);
             golem.playSound(SoundEvents.COPPER_GOLEM_ITEM_NO_DROP, 1.0f, 1.0f);
             controller.markDepositFailed();
         }
@@ -139,7 +139,7 @@ public record InteractToDepositBehavior(NavigationController controller) impleme
         NonNullList<ItemStack> contents = NonNullList.withSize(container.getContainerSize(), ItemStack.EMPTY);
         for (int i = 0; i < container.getContainerSize(); i++) contents.set(i, container.getItem(i).copy());
         CugoBrainAccessor brain = (CugoBrainAccessor) golem;
-        ((CugoBrain) brain.scg$getBrain()).getMemoryManager().updateMemory(pos, contents);
+        ((CugoBrain) brain.cugo$getBrain()).getMemoryManager().updateMemory(pos, contents);
     }
 
     private void toggleChestLid(Level level, BlockPos pos, boolean open) {

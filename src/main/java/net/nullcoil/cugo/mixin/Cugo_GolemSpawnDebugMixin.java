@@ -13,7 +13,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class Cugo_GolemSpawnDebugMixin {
 
     @Inject(method = "<init>", at = @At("RETURN"))
-    private void scg$debugSpawn(EntityType entityType, Level level, CallbackInfo ci) {
+    private void cugo$debugSpawn(EntityType entityType, Level level, CallbackInfo ci) {
         if (!level.isClientSide() && ConfigHandler.getConfig().debugMode) {
             System.out.println("[CuGO-SPAWN] ========== COPPER GOLEM CREATED ==========");
             System.out.println("[CuGO-SPAWN] Stack trace:");

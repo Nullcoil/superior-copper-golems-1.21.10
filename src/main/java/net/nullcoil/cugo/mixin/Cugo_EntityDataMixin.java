@@ -28,7 +28,7 @@ public abstract class Cugo_EntityDataMixin extends Entity implements CugoHomeAcc
     @Shadow public abstract CopperGolemState getState();
 
     @Unique
-    private BlockPos scg$homePos;
+    private BlockPos cugo$homePos;
 
     public Cugo_EntityDataMixin(EntityType<?> entityType, Level level) {
         super(entityType, level);
@@ -36,7 +36,7 @@ public abstract class Cugo_EntityDataMixin extends Entity implements CugoHomeAcc
 
     // --- ANIMATION MAPPING ---
     @Override
-    public void scg$setInteractState(StateMachine.Interact state) {
+    public void cugo$setInteractState(StateMachine.Interact state) {
         if (state == null) {
             this.setState(CopperGolemState.IDLE);
             return;
@@ -51,7 +51,7 @@ public abstract class Cugo_EntityDataMixin extends Entity implements CugoHomeAcc
     }
 
     @Override
-    public StateMachine.Interact scg$getInteractState() {
+    public StateMachine.Interact cugo$getInteractState() {
         CopperGolemState vanillaState = this.getState();
         return switch (vanillaState) {
             case GETTING_ITEM -> StateMachine.Interact.GET;
@@ -65,25 +65,25 @@ public abstract class Cugo_EntityDataMixin extends Entity implements CugoHomeAcc
     // --- HOME & MEMORY SAVE/LOAD ---
 
     @Override
-    public BlockPos scg$getHomePos() {
-        return this.scg$homePos;
+    public BlockPos cugo$getHomePos() {
+        return this.cugo$homePos;
     }
 
     @Override
-    public void scg$setHomePos(BlockPos pos) {
-        this.scg$homePos = pos;
+    public void cugo$setHomePos(BlockPos pos) {
+        this.cugo$homePos = pos;
     }
 
     @Inject(method = "addAdditionalSaveData", at = @At("TAIL"))
-    private void scg$saveData(ValueOutput valueOutput, CallbackInfo ci) {
+    private void cugo$saveData(ValueOutput valueOutput, CallbackInfo ci) {
         // 1. Save Home Pos
-        if (this.scg$homePos != null) {
-            valueOutput.store("cugo_home", BlockPos.CODEC, this.scg$homePos);
+        if (this.cugo$homePos != null) {
+            valueOutput.store("cugo_home", BlockPos.CODEC, this.cugo$homePos);
         }
 
         // 2. Save Memory
         // We generate a CompoundTag manually via the Brain, then store that tag via CODEC
-        CugoBrain brain = (CugoBrain) this.scg$getBrain();
+        CugoBrain brain = (CugoBrain) this.cugo$getBrain();
         if (brain != null) {
             CompoundTag memoryTag = brain.createMemoryTag(this.registryAccess());
             // Only store if not empty to save space
@@ -94,13 +94,13 @@ public abstract class Cugo_EntityDataMixin extends Entity implements CugoHomeAcc
     }
 
     @Inject(method = "readAdditionalSaveData", at = @At("TAIL"))
-    private void scg$loadData(ValueInput valueInput, CallbackInfo ci) {
+    private void cugo$loadData(ValueInput valueInput, CallbackInfo ci) {
         // 1. Load Home Pos
-        this.scg$homePos = valueInput.read("cugo_home", BlockPos.CODEC).orElse(null);
+        this.cugo$homePos = valueInput.read("cugo_home", BlockPos.CODEC).orElse(null);
 
         // 2. Load Memory
         // We read the CompoundTag via CODEC, then pass it to the Brain
-        CugoBrain brain = (CugoBrain) this.scg$getBrain();
+        CugoBrain brain = (CugoBrain) this.cugo$getBrain();
         if (brain != null) {
             valueInput.read("cugo_memory", CompoundTag.CODEC)
                     .ifPresent(tag -> brain.loadMemoryTag(tag, this.registryAccess()));

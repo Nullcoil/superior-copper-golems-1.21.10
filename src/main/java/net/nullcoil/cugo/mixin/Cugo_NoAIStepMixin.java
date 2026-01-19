@@ -12,7 +12,7 @@ public abstract class Cugo_NoAIStepMixin {
     @Inject(method = "customServerAiStep",
     at = @At("HEAD"),
     cancellable = true)
-    private void scg$disableBrainTick(ServerLevel level, CallbackInfo ci) {
+    private void cugo$disableBrainTick(ServerLevel level, CallbackInfo ci) {
         ci.cancel();
     }
 }

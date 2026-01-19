@@ -21,7 +21,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class Cugo_AxeStatueMixin {
 
     @Inject(method = "useOn", at = @At("HEAD"), cancellable = true)
-    private void scg$interceptAxeUseOn(UseOnContext context, CallbackInfoReturnable<InteractionResult> cir) {
+    private void cugo$interceptAxeUseOn(UseOnContext context, CallbackInfoReturnable<InteractionResult> cir) {
         Level level = context.getLevel();
         BlockPos pos = context.getClickedPos();
         BlockState state = level.getBlockState(pos);

@@ -29,7 +29,7 @@ public record InteractWithChestBehavior(NavigationController controller) impleme
         if (!golem.getMainHandItem().isEmpty()) return false;
 
         CugoHomeAccessor homeAccessor = (CugoHomeAccessor) golem;
-        BlockPos homePos = homeAccessor.scg$getHomePos();
+        BlockPos homePos = homeAccessor.cugo$getHomePos();
         if (homePos == null) return false;
 
         // 1. Box Distance Check
@@ -60,7 +60,7 @@ public record InteractWithChestBehavior(NavigationController controller) impleme
         if (!canInteract(golem)) return false;
 
         CugoHomeAccessor homeAccessor = (CugoHomeAccessor) golem;
-        BlockPos homePos = homeAccessor.scg$getHomePos();
+        BlockPos homePos = homeAccessor.cugo$getHomePos();
 
         golem.getNavigation().stop();
         golem.getLookControl().setLookAt(homePos.getX() + 0.5, homePos.getY() + 0.5, homePos.getZ() + 0.5);
@@ -78,14 +78,14 @@ public record InteractWithChestBehavior(NavigationController controller) impleme
 
         if (success) {
             Debug.log("InteractChest: Found item in slot " + foundSlot + ". Animating GET.");
-            anim.scg$setInteractState(StateMachine.Interact.GET);
+            anim.cugo$setInteractState(StateMachine.Interact.GET);
             // TRIGGER SOUND: Starts immediately with animation
             golem.playSound(SoundEvents.COPPER_GOLEM_ITEM_GET, 1.0f, 1.0f);
 
             controller.schedulePickup(homePos, foundSlot);
         } else {
             Debug.log("InteractChest: Chest is empty. Animating NOGET.");
-            anim.scg$setInteractState(StateMachine.Interact.NOGET);
+            anim.cugo$setInteractState(StateMachine.Interact.NOGET);
             // TRIGGER SOUND: Disappointment immediately
             golem.playSound(SoundEvents.COPPER_GOLEM_ITEM_NO_GET, 1.0f, 1.0f);
 

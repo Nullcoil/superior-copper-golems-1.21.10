@@ -3,15 +3,15 @@ package net.nullcoil.cugo.util;
 import net.minecraft.world.level.block.WeatheringCopper;
 
 public interface CugoWeatheringAccessor {
-    WeatheringCopper.WeatherState scg$getWeatherState();
-    void scg$setWeatherState(WeatheringCopper.WeatherState state);
-    WeatheringCopper.WeatherState scg$getPreviousWeatherState();
+    WeatheringCopper.WeatherState cugo$getWeatherState();
+    void cugo$setWeatherState(WeatheringCopper.WeatherState state);
+    WeatheringCopper.WeatherState cugo$getPreviousWeatherState();
 
-    boolean scg$isWaxed();
-    void scg$setWaxed(boolean waxed);
+    boolean cugo$isWaxed();
+    void cugo$setWaxed(boolean waxed);
 
-    void scg$convertToStatue(boolean randomizePose);
+    void cugo$convertToStatue(boolean randomizePose);
 
     // NEW: Triggers the death spiral
-    void scg$startShutdown();
+    void cugo$startShutdown();
 }

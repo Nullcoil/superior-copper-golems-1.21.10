@@ -17,7 +17,7 @@ public class ReturnHomeBehavior implements Behavior {
         if (!golem.getMainHandItem().isEmpty()) return false;
 
         CugoHomeAccessor accessor = (CugoHomeAccessor) golem;
-        BlockPos homePos = accessor.scg$getHomePos();
+        BlockPos homePos = accessor.cugo$getHomePos();
         if (homePos == null) {
             // Debug.log("ReturnHome: No home assigned.");
             return false;
@@ -26,7 +26,7 @@ public class ReturnHomeBehavior implements Behavior {
         BlockState state = golem.level().getBlockState(homePos);
         if (!state.is(ModTags.Blocks.CUGO_CONTAINER_INPUTS)) {
             Debug.log("ReturnHome: Home invalid (block removed or changed). Forgetting home.");
-            accessor.scg$setHomePos(null);
+            accessor.cugo$setHomePos(null);
             return false;
         }
 

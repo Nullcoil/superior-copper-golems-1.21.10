@@ -16,27 +16,27 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class Cugo_BrainIntegrationMixin implements CugoBrainAccessor {
 
     @Unique
-    private CugoBehavior scg$brain;
+    private CugoBehavior cugo$brain;
 
     @Inject(method = "<init>", at = @At("TAIL"))
-    private void scg$initBrain(CallbackInfo ci) {
-        this.scg$brain = new CugoBrain();
-        if (this.scg$brain instanceof CugoBrain brain) {
+    private void cugo$initBrain(CallbackInfo ci) {
+        this.cugo$brain = new CugoBrain();
+        if (this.cugo$brain instanceof CugoBrain brain) {
             brain.onAttach((CopperGolem)(Object)this);
         }
     }
 
     @Inject(method = "customServerAiStep", at = @At("HEAD"), cancellable = true)
-    private void scg$replaceAiStep(ServerLevel level, CallbackInfo ci) {
-        if (this.scg$brain != null) {
-            this.scg$brain.tick((CopperGolem)(Object)this, level);
+    private void cugo$replaceAiStep(ServerLevel level, CallbackInfo ci) {
+        if (this.cugo$brain != null) {
+            this.cugo$brain.tick((CopperGolem)(Object)this, level);
         }
         ci.cancel();
     }
 
     // 2. Implement the accessor method
     @Override
-    public CugoBehavior scg$getBrain() {
-        return this.scg$brain;
+    public CugoBehavior cugo$getBrain() {
+        return this.cugo$brain;
     }
 }

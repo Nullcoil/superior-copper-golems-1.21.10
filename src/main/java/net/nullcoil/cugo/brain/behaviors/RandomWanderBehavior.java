@@ -36,17 +36,17 @@ public class RandomWanderBehavior implements Behavior {
         // If the Golem doesn't have a home, check the block directly below it.
         // This allows it to "claim" a chest immediately upon spawning/recharging
         // without waiting for a random linger scan.
-        if (homeAccessor.scg$getHomePos() == null) {
+        if (homeAccessor.cugo$getHomePos() == null) {
             BlockPos below = golem.blockPosition().below();
             if (golem.level().getBlockState(below).is(ModTags.Blocks.CUGO_CONTAINER_INPUTS)) {
                 BlockPos homePos = below.immutable();
-                homeAccessor.scg$setHomePos(homePos);
+                homeAccessor.cugo$setHomePos(homePos);
                 Debug.log("Wander: Auto-assigned home to container below: " + homePos);
             }
         }
 
         // OLD BATTERY CHECK: Oxidized AND Unwaxed
-        boolean isOldBattery = weathering.scg$getWeatherState() == WeatheringCopper.WeatherState.OXIDIZED && !weathering.scg$isWaxed();
+        boolean isOldBattery = weathering.cugo$getWeatherState() == WeatheringCopper.WeatherState.OXIDIZED && !weathering.cugo$isWaxed();
 
         // --- 1. SCANNING & LINGERING ---
         if (isUrgent) {
@@ -68,7 +68,7 @@ public class RandomWanderBehavior implements Behavior {
                     // Lingering in Oxidized state: We log, but do NOT call resetTiredness().
                     if (currentWanderChance <= 0) {
                         Debug.log("Critical Failure: Battery Depleted. Initiating Shutdown.");
-                        weathering.scg$startShutdown();
+                        weathering.cugo$startShutdown();
                     }
                 } else {
                     // Normal Golem: Resting restores energy.
@@ -129,8 +129,8 @@ public class RandomWanderBehavior implements Behavior {
         int vRange = ConfigHandler.getConfig().verticalRange;
         CugoBrainAccessor brainAccessor = (CugoBrainAccessor) golem;
         CugoHomeAccessor homeAccessor = (CugoHomeAccessor) golem;
-        MemoryManager memory = ((CugoBrain) brainAccessor.scg$getBrain()).getMemoryManager();
-        boolean needsHome = homeAccessor.scg$getHomePos() == null;
+        MemoryManager memory = ((CugoBrain) brainAccessor.cugo$getBrain()).getMemoryManager();
+        boolean needsHome = homeAccessor.cugo$getHomePos() == null;
         BlockPos bestHomeCandidate = null;
         double closestHomeDist = Double.MAX_VALUE;
         Set<BlockPos> uniqueChests = new HashSet<>();
@@ -162,7 +162,7 @@ public class RandomWanderBehavior implements Behavior {
         }
         if (bestHomeCandidate != null) {
             Debug.log("Wander: Home Assigned: " + bestHomeCandidate);
-            homeAccessor.scg$setHomePos(bestHomeCandidate);
+            homeAccessor.cugo$setHomePos(bestHomeCandidate);
         }
     }
 
@@ -190,7 +190,7 @@ public class RandomWanderBehavior implements Behavior {
         // If Oxidized and Unwaxed, drain is fixed at 1% per step.
         // Otherwise, use Fibonacci (which only really matters if the golem stops recharging).
         int penalty;
-        if (weathering.scg$getWeatherState() == WeatheringCopper.WeatherState.OXIDIZED && !weathering.scg$isWaxed()) {
+        if (weathering.cugo$getWeatherState() == WeatheringCopper.WeatherState.OXIDIZED && !weathering.cugo$isWaxed()) {
             penalty = 1;
         } else {
             penalty = getFibonacci(stepIndex);

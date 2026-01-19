@@ -20,7 +20,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class Cugo_InteractionMixin {
 
     @Inject(method = "mobInteract", at = @At("HEAD"), cancellable = true)
-    private void scg$handleInteraction(Player player, InteractionHand hand, CallbackInfoReturnable<InteractionResult> cir) {
+    private void cugo$handleInteraction(Player player, InteractionHand hand, CallbackInfoReturnable<InteractionResult> cir) {
         if (hand != InteractionHand.MAIN_HAND) return;
 
         CopperGolem cugo = (CopperGolem) (Object) this;
@@ -36,7 +36,7 @@ public abstract class Cugo_InteractionMixin {
                 Debug.log("Interaction: Lobotomy nugget detected. Converting to statue.");
                 if (!level.isClientSide()) {
                     CugoWeatheringAccessor weathering = (CugoWeatheringAccessor) cugo;
-                    weathering.scg$convertToStatue(true); // From Cugo_WeatheringMixin
+                    weathering.cugo$convertToStatue(true); // From Cugo_WeatheringMixin
                     if (!player.isCreative()) playerHeldItem.shrink(1);
                 }
                 cir.setReturnValue(InteractionResult.SUCCESS);

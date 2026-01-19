@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(CopperGolem.class)
 public abstract class Cugo_NoBrainMixin {
     @Inject(method = "makeBrain", at = @At("HEAD"), cancellable = true)
-    private void scg$emptyBrain(Dynamic<?> dynamic, CallbackInfoReturnable<Brain<?>> cir) {
+    private void cugo$emptyBrain(Dynamic<?> dynamic, CallbackInfoReturnable<Brain<?>> cir) {
         cir.setReturnValue(
                 Brain.provider(ImmutableList.of(), ImmutableList.of()).makeBrain(dynamic)
         );

@@ -50,14 +50,14 @@ public abstract class Cugo_WeatheringMixin extends Entity implements CugoWeather
     // which returns true if RNG hits. We Inject here to FORCE it to return FALSE.
     // This effectively lobotomizes the vanilla statue conversion logic.
     @Inject(method = "canTurnToStatue", at = @At("HEAD"), cancellable = true)
-    private void scg$disableVanillaStatueRNG(Level level, CallbackInfoReturnable<Boolean> cir) {
+    private void cugo$disableVanillaStatueRNG(Level level, CallbackInfoReturnable<Boolean> cir) {
         // We take full control. Disable vanilla RNG statuing.
         cir.setReturnValue(false);
     }
     // --- CRITICAL FIX END ---
 
     @Inject(method = "tick", at = @At("TAIL"))
-    private void scg$tickWeathering(CallbackInfo ci) {
+    private void cugo$tickWeathering(CallbackInfo ci) {
         if (this.level().isClientSide()) return;
 
         // --- 1. SHUTDOWN SEQUENCE ---
@@ -66,7 +66,7 @@ public abstract class Cugo_WeatheringMixin extends Entity implements CugoWeather
             return;
         }
 
-        if (scg$isWaxed()) return;
+        if (cugo$isWaxed()) return;
 
         // --- 2. CUSTOM OXIDATION LOGIC ---
         // If Oxidized, we stop here. We don't run our accelerator.
@@ -79,7 +79,7 @@ public abstract class Cugo_WeatheringMixin extends Entity implements CugoWeather
         if (this.tickCount % 20 == 0) {
             if (this.random.nextFloat() < 0.000833f) {
                 Debug.log("Natural Oxidation Roll Passed! Advancing Stage from " + getWeatherState());
-                scg$advanceStage();
+                cugo$advanceStage();
             }
         }
     }
@@ -102,12 +102,12 @@ public abstract class Cugo_WeatheringMixin extends Entity implements CugoWeather
         // Freeze
         if (shutdownTimer > 100) {
             Debug.log("System Halted. Converting to Statue.");
-            scg$convertToStatue(false);
+            cugo$convertToStatue(false);
         }
     }
 
     @Override
-    public void scg$startShutdown() {
+    public void cugo$startShutdown() {
         if (!this.isDying) {
             Debug.log("Shutdown Sequence Triggered via Accessor.");
             this.isDying = true;
@@ -117,26 +117,26 @@ public abstract class Cugo_WeatheringMixin extends Entity implements CugoWeather
 
     // --- NBT SAVING ---
     @Inject(method = "addAdditionalSaveData", at = @At("TAIL"))
-    private void scg$saveWeathering(ValueOutput valueOutput, CallbackInfo ci) {
+    private void cugo$saveWeathering(ValueOutput valueOutput, CallbackInfo ci) {
         valueOutput.putBoolean("IsDying", this.isDying);
         valueOutput.putInt("ShutdownTimer", this.shutdownTimer);
     }
 
     @Inject(method = "readAdditionalSaveData", at = @At("TAIL"))
-    private void scg$loadWeathering(ValueInput valueInput, CallbackInfo ci) {
+    private void cugo$loadWeathering(ValueInput valueInput, CallbackInfo ci) {
         this.isDying = valueInput.getBooleanOr("IsDying", false);
         this.shutdownTimer = valueInput.getIntOr("ShutdownTimer", 0);
     }
 
     // --- LOBOTOMY ---
     @Inject(method = "mobInteract", at = @At("HEAD"), cancellable = true)
-    private void scg$onInteract(Player player, InteractionHand hand, CallbackInfoReturnable<InteractionResult> cir) {
+    private void cugo$onInteract(Player player, InteractionHand hand, CallbackInfoReturnable<InteractionResult> cir) {
         ItemStack stack = player.getItemInHand(hand);
         if (stack.is(Items.COPPER_NUGGET)) {
             if (stack.getHoverName().getString().equalsIgnoreCase("Lobotomize")) {
                 Debug.log("Lobotomy Interaction Validated. Manually converting to statue.");
                 if (!this.level().isClientSide()) {
-                    scg$convertToStatue(true);
+                    cugo$convertToStatue(true);
                     if (!player.isCreative()) stack.shrink(1);
                 }
                 cir.setReturnValue(InteractionResult.SUCCESS);
@@ -146,7 +146,7 @@ public abstract class Cugo_WeatheringMixin extends Entity implements CugoWeather
 
     // --- ACCESSORS / HELPERS ---
     @Unique
-    private void scg$advanceStage() {
+    private void cugo$advanceStage() {
         WeatheringCopper.WeatherState current = getWeatherState();
         switch (current) {
             case UNAFFECTED -> setWeatherState(WeatheringCopper.WeatherState.EXPOSED);
@@ -156,11 +156,11 @@ public abstract class Cugo_WeatheringMixin extends Entity implements CugoWeather
     }
 
     @Override
-    public WeatheringCopper.WeatherState scg$getWeatherState() { return getWeatherState(); }
+    public WeatheringCopper.WeatherState cugo$getWeatherState() { return getWeatherState(); }
     @Override
-    public void scg$setWeatherState(WeatheringCopper.WeatherState state) { setWeatherState(state); }
+    public void cugo$setWeatherState(WeatheringCopper.WeatherState state) { setWeatherState(state); }
     @Override
-    public WeatheringCopper.WeatherState scg$getPreviousWeatherState() {
+    public WeatheringCopper.WeatherState cugo$getPreviousWeatherState() {
         WeatheringCopper.WeatherState current = this.getWeatherState();
         return switch (current) {
             case UNAFFECTED -> WeatheringCopper.WeatherState.UNAFFECTED;
@@ -175,26 +175,26 @@ public abstract class Cugo_WeatheringMixin extends Entity implements CugoWeather
             net.minecraft.network.syncher.SynchedEntityData.defineId(CopperGolem.class, net.minecraft.network.syncher.EntityDataSerializers.BOOLEAN);
 
     @Inject(method = "defineSynchedData", at = @At("TAIL"))
-    private void scg$defineWaxData(net.minecraft.network.syncher.SynchedEntityData.Builder builder, CallbackInfo ci) {
+    private void cugo$defineWaxData(net.minecraft.network.syncher.SynchedEntityData.Builder builder, CallbackInfo ci) {
         builder.define(IS_WAXED, false);
     }
     @Inject(method = "addAdditionalSaveData", at = @At("TAIL"))
-    private void scg$saveWax(net.minecraft.world.level.storage.ValueOutput output, CallbackInfo ci) {
+    private void cugo$saveWax(net.minecraft.world.level.storage.ValueOutput output, CallbackInfo ci) {
         output.putBoolean("Waxed", this.entityData.get(IS_WAXED));
     }
     @Inject(method = "readAdditionalSaveData", at = @At("TAIL"))
-    private void scg$loadWax(net.minecraft.world.level.storage.ValueInput input, CallbackInfo ci) {
+    private void cugo$loadWax(net.minecraft.world.level.storage.ValueInput input, CallbackInfo ci) {
         this.entityData.set(IS_WAXED, input.getBooleanOr("Waxed", false));
     }
-    @Override public boolean scg$isWaxed() { return this.entityData.get(IS_WAXED); }
-    @Override public void scg$setWaxed(boolean waxed) { this.entityData.set(IS_WAXED, waxed); }
+    @Override public boolean cugo$isWaxed() { return this.entityData.get(IS_WAXED); }
+    @Override public void cugo$setWaxed(boolean waxed) { this.entityData.set(IS_WAXED, waxed); }
 
     @Override
-    public void scg$convertToStatue(boolean randomizePose) {
+    public void cugo$convertToStatue(boolean randomizePose) {
         if (this.isRemoved()) return;
         BlockPos pos = this.blockPosition();
         if (!this.level().getBlockState(pos).canBeReplaced()) pos = pos.above();
-        Block statueBlock = scg$getStatueBlock();
+        Block statueBlock = cugo$getStatueBlock();
         if (statueBlock == null) return;
         BlockState state = statueBlock.defaultBlockState().setValue(CopperGolemStatueBlock.FACING, this.getDirection());
         if (randomizePose) {
@@ -208,9 +208,9 @@ public abstract class Cugo_WeatheringMixin extends Entity implements CugoWeather
     }
 
     @Unique
-    private Block scg$getStatueBlock() {
+    private Block cugo$getStatueBlock() {
         WeatheringCopper.WeatherState state = getWeatherState();
-        boolean waxed = scg$isWaxed();
+        boolean waxed = cugo$isWaxed();
         if (waxed) {
             return switch (state) {
                 case UNAFFECTED -> Blocks.WAXED_COPPER_GOLEM_STATUE;

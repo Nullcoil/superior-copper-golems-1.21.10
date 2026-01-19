@@ -23,7 +23,7 @@ public record DepositItemBehavior(NavigationController controller) implements Be
         }
 
         CugoBrainAccessor brainAccessor = (CugoBrainAccessor) golem;
-        MemoryManager memory = ((CugoBrain) brainAccessor.scg$getBrain()).getMemoryManager();
+        MemoryManager memory = ((CugoBrain) brainAccessor.cugo$getBrain()).getMemoryManager();
         BlockPos currentPos = golem.blockPosition();
 
         // Local Blacklist for this specific decision cycle

@@ -18,7 +18,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(Block.class)
 public abstract class PoweredBlockMixin {
     @Inject(method = "stepOn", at = @At("HEAD"), cancellable = true)
-    public void scg$copperGolemStep(Level level, BlockPos blockPos, BlockState blockState, Entity entity, CallbackInfo ci) {
+    public void cugo$copperGolemStep(Level level, BlockPos blockPos, BlockState blockState, Entity entity, CallbackInfo ci) {
         if(level.getBlockState(blockPos).is(Blocks.REDSTONE_BLOCK) && ConfigHandler.getConfig().redstoneBoost && entity instanceof CopperGolem cugo) {
             cugo.addEffect(new MobEffectInstance(MobEffects.SPEED, 80, 0, false, true, false));
         }

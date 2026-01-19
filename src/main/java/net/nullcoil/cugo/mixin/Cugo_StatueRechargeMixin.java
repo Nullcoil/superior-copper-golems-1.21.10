@@ -40,7 +40,7 @@ public abstract class Cugo_StatueRechargeMixin extends Block {
     protected abstract void updatePose(Level level, BlockState blockState, BlockPos blockPos, Player player);
 
     @Inject(method = "useItemOn", at = @At("HEAD"), cancellable = true)
-    private void scg$interceptUseItemOn(ItemStack itemStack, BlockState blockState, Level level, BlockPos blockPos, Player player, InteractionHand interactionHand, BlockHitResult blockHitResult, CallbackInfoReturnable<InteractionResult> cir) {
+    private void cugo$interceptUseItemOn(ItemStack itemStack, BlockState blockState, Level level, BlockPos blockPos, Player player, InteractionHand interactionHand, BlockHitResult blockHitResult, CallbackInfoReturnable<InteractionResult> cir) {
 
         boolean isAxe = itemStack.is(ItemTags.AXES) || itemStack.getItem() instanceof AxeItem;
 
@@ -71,13 +71,13 @@ public abstract class Cugo_StatueRechargeMixin extends Block {
         if (!level.isClientSide()) {
             boolean hasSignal = level.hasNeighborSignal(pos);
             if (hasSignal && ConfigHandler.getConfig().rechargeableStatues) {
-                scg$revertToGolem(level, pos, state);
+                cugo$revertToGolem(level, pos, state);
             }
         }
     }
 
     @Unique
-    private void scg$revertToGolem(Level level, BlockPos pos, BlockState state) {
+    private void cugo$revertToGolem(Level level, BlockPos pos, BlockState state) {
         Debug.log("Statue received redstone signal. Reverting to Golem at " + pos);
 
         CopperGolem golem = EntityType.COPPER_GOLEM.create(level, EntitySpawnReason.TRIGGERED);
@@ -101,13 +101,13 @@ public abstract class Cugo_StatueRechargeMixin extends Block {
             CugoWeatheringAccessor weathering = (CugoWeatheringAccessor) golem;
 
             if (block == Blocks.OXIDIZED_COPPER_GOLEM_STATUE || block == Blocks.WAXED_OXIDIZED_COPPER_GOLEM_STATUE) {
-                weathering.scg$setWeatherState(WeatheringCopper.WeatherState.OXIDIZED);
+                weathering.cugo$setWeatherState(WeatheringCopper.WeatherState.OXIDIZED);
             } else if (block == Blocks.WEATHERED_COPPER_GOLEM_STATUE || block == Blocks.WAXED_WEATHERED_COPPER_GOLEM_STATUE) {
-                weathering.scg$setWeatherState(WeatheringCopper.WeatherState.WEATHERED);
+                weathering.cugo$setWeatherState(WeatheringCopper.WeatherState.WEATHERED);
             } else if (block == Blocks.EXPOSED_COPPER_GOLEM_STATUE || block == Blocks.WAXED_EXPOSED_COPPER_GOLEM_STATUE) {
-                weathering.scg$setWeatherState(WeatheringCopper.WeatherState.EXPOSED);
+                weathering.cugo$setWeatherState(WeatheringCopper.WeatherState.EXPOSED);
             } else {
-                weathering.scg$setWeatherState(WeatheringCopper.WeatherState.UNAFFECTED);
+                weathering.cugo$setWeatherState(WeatheringCopper.WeatherState.UNAFFECTED);
             }
 
             boolean isWaxedBlock = block == Blocks.WAXED_OXIDIZED_COPPER_GOLEM_STATUE ||
@@ -116,7 +116,7 @@ public abstract class Cugo_StatueRechargeMixin extends Block {
                     block == Blocks.WAXED_COPPER_GOLEM_STATUE;
 
             if (isWaxedBlock) {
-                weathering.scg$setWaxed(true);
+                weathering.cugo$setWaxed(true);
             }
 
             level.addFreshEntity(golem);

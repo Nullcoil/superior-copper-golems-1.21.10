@@ -22,14 +22,14 @@ public record SelfPreservationBehavior() implements Behavior {
         if (held.isEmpty()) return false;
 
         CugoWeatheringAccessor weathering = (CugoWeatheringAccessor) golem;
-        WeatheringCopper.WeatherState currentState = weathering.scg$getWeatherState();
-        boolean isWaxed = weathering.scg$isWaxed();
+        WeatheringCopper.WeatherState currentState = weathering.cugo$getWeatherState();
+        boolean isWaxed = weathering.cugo$isWaxed();
 
         // 1. HONEYCOMB (Waxing)
         if (held.is(Items.HONEYCOMB)) {
             if (!isWaxed) {
                 Debug.log("SelfPreservation: Applying Honeycomb (Waxing)...");
-                weathering.scg$setWaxed(true);
+                weathering.cugo$setWaxed(true);
                 golem.playSound(SoundEvents.HONEYCOMB_WAX_ON, 1.0f, 1.0f);
                 spawnParticles(golem, ParticleTypes.WAX_ON);
                 held.shrink(1);
@@ -48,10 +48,10 @@ public record SelfPreservationBehavior() implements Behavior {
                 boolean hasOxidation = currentState != WeatheringCopper.WeatherState.UNAFFECTED;
 
                 if (!isWaxed && hasOxidation) {
-                    WeatheringCopper.WeatherState previous = weathering.scg$getPreviousWeatherState();
+                    WeatheringCopper.WeatherState previous = weathering.cugo$getPreviousWeatherState();
                     if (previous != null) {
                         Debug.log("SelfPreservation: Scraping Oxidation: " + currentState + " -> " + previous);
-                        weathering.scg$setWeatherState(previous);
+                        weathering.cugo$setWeatherState(previous);
                         golem.playSound(SoundEvents.AXE_SCRAPE, 1.0f, 1.0f);
                         spawnParticles(golem, ParticleTypes.SCRAPE);
                         damageAxe(golem, held);

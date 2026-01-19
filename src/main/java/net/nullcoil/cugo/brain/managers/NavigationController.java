@@ -65,7 +65,7 @@ public class NavigationController {
                         closeHomeChest();
                     }
 
-                    ((CugoAnimationAccessor) golem).scg$setInteractState(null);
+                    ((CugoAnimationAccessor) golem).cugo$setInteractState(null);
                     isInteracting = false;
 
                     if(golem.getMainHandItem().isEmpty()) {
@@ -255,9 +255,9 @@ public class NavigationController {
         net.minecraft.core.NonNullList<ItemStack> contents = net.minecraft.core.NonNullList.withSize(container.getContainerSize(), ItemStack.EMPTY);
         for(int i=0; i<container.getContainerSize(); i++) contents.set(i, container.getItem(i).copy());
         CugoBrainAccessor brain = (CugoBrainAccessor) golem;
-        ((CugoBrain)brain.scg$getBrain()).getMemoryManager().updateMemory(pos, contents);
+        ((CugoBrain)brain.cugo$getBrain()).getMemoryManager().updateMemory(pos, contents);
     }
-    private void closeHomeChest() { closeChest(((CugoHomeAccessor) golem).scg$getHomePos()); }
+    private void closeHomeChest() { closeChest(((CugoHomeAccessor) golem).cugo$getHomePos()); }
     private void closeChest(BlockPos pos) {
         if (pos != null) {
             Level level = golem.level();
